@@ -163,7 +163,7 @@ function hurt() {
 }
 function strike(e, dmg) {
   if (e.dead || ['filhote', 'ovo', 'raio', 'rota', 'passagem', 'tesouro'].includes(e.kind)) return;
-  const dealt = e.kind === 'boss' && level.id === 4 && e.state === 'recover' ? dmg * 1.4 : dmg;
+  const dealt = e.kind === 'boss' && e.state === 'recover' ? dmg * (level.id === 4 ? 1.4 : 1.2) : dmg;
   if (isTraining()) {
     run.training.damage += Math.min(Math.max(0, e.hp), dealt);
     run.training.damageStarted ??= run.t;
@@ -255,45 +255,64 @@ function ashGuardianAct(e, dt) {
     note(e.phase === 2 ? 205 : 170, 0.18, "triangle", 0.045, 0, e.phase === 2 ? 510 : 330);
   }
 }
+// All six bosses share a readable, checkpoint-safe warning -> volley -> recovery cycle.
+// Their projectile patterns and summons still differ by realm.
 function bossAct(e, dt) {
-  if (level.id === 4) {
-    ashGuardianAct(e, dt);
+  if (level.id === 4) { ashGuardianAct(e, dt); return; }
+  const region = level.region;
+  e.x = Math.max(379, e.x - dt * 45);
+  e.phase = e.hp / e.max < 0.33 ? 2 : e.hp / e.max < 0.66 ? 1 : 0;
+  e.y = 105 + Math.sin(e.age * (0.7 + region * 0.07)) * 48;
+  e.state ??= 'idle';
+  if (e.state === 'warning') {
+    e.telegraphLeft = Math.max(0, (e.telegraphLeft || 0) - dt);
+    if (e.telegraphLeft > 0) return;
+    const phase = e.phase;
+    const speed = (save.difficulty === 'Difícil' ? 116 : save.difficulty === 'Fácil' ? 78 : 96) + region * 3;
+    // A fixed aim point lets the player react instead of being tracked after dodging.
+    const aimX = e.aimX ?? run.p.x, aimY = e.aimY ?? run.p.y;
+    if (e.pattern === 'lane') {
+      // Parallel projectiles match the bright horizontal warning line.
+      const count = phase === 2 ? 5 : 3;
+      for (let i = 0; i < count; i++) run.bullets.push({
+        x: e.x - 15, y: bound(aimY + (i - (count - 1) / 2) * 9, 18, 205),
+        vx: -speed, vy: 0
+      });
+    } else if (e.pattern === 'burst') {
+      enemyFireAt(e, aimX, aimY, phase === 2 ? 7 : 5, phase === 2 ? .25 : .3, speed);
+    } else {
+      const shotCount = [3, 4, 5][phase] + (region === 5 ? 2 : 0);
+      enemyFireAt(e, aimX, aimY, shotCount, region === 1 ? .31 : .22, speed);
+    }
+    // Region-specific reinforcements make each boss distinct.
+    if (region === 1 && e.wave % 2 === 0) run.entities.push(entity('batedor', bound(e.y + 20, 22, 202), -e.wave));
+    if (region === 4 && e.wave % 2 === 0) run.entities.push(entity('raio', aimY, -e.wave));
+    if (region === 5) {
+      if (phase > 0 && e.wave % 3 === 0) run.entities.push(entity('raio', aimY, -e.wave));
+      if (phase === 2 && e.wave % 2 === 0) run.entities.push(entity('arqueiro', bound(e.y + 15, 22, 202), -e.wave));
+    }
+    e.state = 'recover';
+    e.recover = save.difficulty === 'Difícil' ? .25 : .38;
+    e.telegraphLeft = 0;
     return;
   }
-  e.x = Math.max(379, e.x - dt * 45);
-  let reg = level.region, phase = e.hp / e.max < 0.33 ? 2 : e.hp / e.max < 0.66 ? 1 : 0;
-  e.phase = phase; // Used by the boss HUD, save and difficulty tests.
-  e.y = 105 + Math.sin(e.age * (0.7 + reg * 0.07)) * 48;
+  if (e.state === 'recover') {
+    e.recover = Math.max(0, (e.recover || 0) - dt);
+    if (e.recover > 0) return;
+    e.state = 'idle';
+    // Preserve the Normal challenge while adding a fair reaction window.
+    e.cool = (save.difficulty === 'Fácil' ? 2.25 : save.difficulty === 'Difícil' ? 1.15 : 1.5) - e.phase * .14;
+    return;
+  }
   e.cool -= dt;
   if (e.cool > 0 || e.x > 401) return;
-  e.wave++;
-  let speed = (save.difficulty === "Difícil" ? 116 : save.difficulty === "Fácil" ? 78 : 96) + reg * 3;
-  switch (reg) {
-    case 0:
-      enemyFire(e, 3 + phase, 0.24, speed);
-      break;
-    case 1:
-      enemyFire(e, 2 + phase, 0.33, speed);
-      if (e.wave % 2 === 0) run.entities.push(entity("batedor", e.y + 20, -e.wave));
-      break;
-    case 2:
-      enemyFire(e, 5, 0.21, speed - 12);
-      break;
-    case 3:
-      enemyFire(e, phase === 0 ? 3 : 5, 0.32, speed + 12);
-      break;
-    case 4:
-      enemyFire(e, 2, 0.5, speed);
-      if (e.wave % 2 === 0) run.entities.push(entity("raio", run.p.y, -e.wave));
-      break;
-    case 5:
-      enemyFire(e, 3 + phase * 2, 0.2, speed);
-      if (phase > 0 && e.wave % 3 === 0) run.entities.push(entity("raio", run.p.y, -e.wave));
-      if (phase === 2 && e.wave % 2 === 0) run.entities.push(entity("arqueiro", e.y + 15, -e.wave));
-      break;
-  }
-  const cadence = (reg === 2 ? 2.8 : 2.5) - phase * 0.2;
-  e.cool = save.difficulty === "Fácil" ? cadence + 0.55 : save.difficulty === "Difícil" ? cadence - 0.48 : cadence - 0.28;
+  e.state = 'warning';
+  e.pattern = e.phase === 2 ? 'lane' : e.phase === 1 ? 'burst' : 'fan';
+  e.aimX = Math.min(run.p.x, e.x - 40);
+  e.aimY = bound(run.p.y, 26, 198);
+  e.telegraphLeft = (save.difficulty === 'Fácil' ? .98 : save.difficulty === 'Difícil' ? .58 : .74) - e.phase * .045;
+  e.wave = (e.wave || 0) + 1;
+  note(170 + e.phase * 32, .14, 'triangle', .036, 0, 370);
 }
 function update(dt) {
   const p = run.p;
@@ -468,6 +487,12 @@ function missionTip() {
     if (boss?.phase === 2) return "Última etapa · A explosão de brasas é mais rápida.";
     if (run.bossSent) return "Guardião das Cinzas · Observe a preparação antes de cada ataque.";
   }
+  if (level.boss && run.bossSent && level.id !== 4) {
+    const boss = run.entities.find(e => e.kind === 'boss' && !e.dead);
+    if (boss?.state === 'warning') return 'ATAQUE IMINENTE · A faixa luminosa indica o próximo disparo. Esquive-se antes do impacto!';
+    if (boss?.state === 'recover') return 'Chefão exposto · Aproveite para atacar enquanto ele recupera o fôlego.';
+    if (boss) return 'ETAPA ' + ((boss.phase ?? 0) + 1) + '/3 · Reaja ao aviso luminoso e use sua Fúria no momento certo.';
+  }
   if(level.id===2){
     const rescue=run.entities.find(e=>!e.dead && (e.kind==='jaula'||e.kind==='filhote'));
     if(rescue?.kind==='jaula')return 'Jaula à vista · Mire na altura do filhote e dispare.';
@@ -484,20 +509,36 @@ function draw() {
   const tip=document.querySelector('#flightTip'), text=missionTip();
   if(tip.textContent!==text)tip.textContent=text;
   const boss=run.entities.find(e=>e.kind==='boss'&&!e.dead);
-  tip.classList.toggle('boss-recover',level.id===4&&boss?.state==='recover');
-  const signal=document.querySelector('#bossSignal');
-  if (signal) {
-    const active=level.id===4 && boss && boss.state==='warning';
-    signal.hidden=!active;
-    if(active){
-      signal.className='boss-signal '+boss.pattern;
-      const aspect=game.clientHeight?game.clientWidth/game.clientHeight:480/222;
-      const viewHeight=Math.max(222,480/aspect);
-      const targetY=boss.pattern==='lane'?boss.aimY:boss.y;
-      signal.style.top=(50+(targetY-111)/viewHeight*100)+'%';
-      signal.style.left=(boss.pattern==='lane'?9:boss.x/480*100)+'%';
-      signal.style.right=boss.pattern==='lane'?'14%':'auto';
-      signal.style.width=boss.pattern==='lane'?'auto':boss.pattern==='fan'?'160px':'112px';
+  tip.classList.toggle('boss-recover',!!boss&&boss.state==='recover');
+  const warningSignal = document.querySelector('#bossSignal');
+  if (warningSignal) {
+    const warning = !!boss && boss.state === 'warning';
+    warningSignal.hidden = !warning;
+    if (warning) {
+      warningSignal.className = 'boss-signal ' + (boss.pattern || 'fan');
+      const aspect = game.clientHeight ? game.clientWidth / game.clientHeight : 480 / 222;
+      const viewHeight = Math.max(222, 480 / aspect);
+      const targetY = boss.pattern === 'lane' ? boss.aimY : boss.y;
+      warningSignal.style.top = (50 + (targetY - 111) / viewHeight * 100) + '%';
+      warningSignal.style.left = (boss.pattern === 'lane' ? 9 : boss.x / 480 * 100) + '%';
+      warningSignal.style.right = boss.pattern === 'lane' ? '14%' : 'auto';
+      warningSignal.style.width = boss.pattern === 'lane' ? 'auto' : boss.pattern === 'fan' ? '160px' : '112px';
+    }
+  }
+  const bossHealth = document.querySelector('#bossHealth');
+  if (bossHealth) {
+    bossHealth.hidden = !boss;
+    if (boss) {
+      const names = {4:'Guardião das Cinzas',8:'Rainha das Raízes',12:'Colosso de Cristal',16:'Dragão Ancestral do Gelo',20:'Senhor das Chamas',24:'Senhor do Eclipse'};
+      const ratio = bound(boss.hp / boss.max, 0, 1);
+      const percent = Math.round(ratio * 100);
+      const status = boss.state === 'warning' ? 'PREPARE A ESQUIVA' : boss.state === 'recover' ? 'ABERTURA PARA ATACAR' : 'CONFRONTO';
+      document.querySelector('#bossHealthName').textContent = names[level.id] || 'Chefe';
+      document.querySelector('#bossHealthStage').textContent = 'ETAPA ' + ((boss.phase ?? 0) + 1) + '/3 · ' + status;
+      document.querySelector('#bossHealthFill').style.width = percent + '%';
+      bossHealth.setAttribute('aria-label', (names[level.id] || 'Chefe') + ', etapa ' + ((boss.phase ?? 0) + 1) + ', ' + percent + '% de vida');
+      bossHealth.classList.toggle('warning', boss.state === 'warning');
+      bossHealth.classList.toggle('recover', boss.state === 'recover');
     }
   }
   const progress=document.querySelector('#routeProgress');
