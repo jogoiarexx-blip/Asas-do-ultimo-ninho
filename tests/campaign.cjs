@@ -20,7 +20,12 @@ async function verify(){await vm.runInNewContext(source+`
  const cage=entity('jaula',90,72);strike(cage,2);assert.equal(cage.kind,'filhote');awardItem(cage);assert.equal(cardCount(save.babies),1);
  checkpoint();localStorage.setItem(SAVEKEY,'{bad');assert.ok(loadSave().cp);writeSave();
  endFlight(true);assert.equal(unlocked(),2);assert.equal(save.cp,null);assert.equal(Object.values(save.eggs)[0].left,0);
- buy('nest');assert.equal(save.nest,2);
+ const beforeNest=save.scales;buy('nest');assert.equal(save.nest,1);assert.equal(save.scales,beforeNest);
+ save.scales=25;buy('nest');assert.equal(save.nest,2);assert.equal(save.scales,0);
+ save.scales=59;buy('nest');assert.equal(save.nest,2);save.scales=60;buy('nest');assert.equal(save.nest,3);
+ save.scales=120;save.cores=1;buy('nest');assert.equal(save.nest,3);assert.equal(save.scales,120);
+ save.cores=2;buy('nest');assert.equal(save.nest,4);assert.equal(save.scales,0);assert.equal(save.cores,0);
+ save.scales=210;save.cores=3;buy('nest');assert.equal(save.nest,5);assert.equal(save.scales,0);assert.equal(save.cores,0);
  level=await getLevel(4);run=freshRun();mode='flight';const guardian=entity('boss',92,999);guardian.x=401;run.entities=[guardian];guardian.cool=0;bossAct(guardian,.01);assert.equal(guardian.state,'warning');assert.equal(guardian.pattern,'lane');assert.ok(guardian.telegraphLeft>0);bossAct(guardian,1.1);assert.equal(guardian.state,'recover');assert.equal(run.bullets.length,3);guardian.hp=guardian.max*.5;guardian.state='idle';guardian.cool=0;bossAct(guardian,.01);assert.equal(guardian.pattern,'fan');bossAct(guardian,1.1);assert.equal(run.bullets.length,8);guardian.hp=guardian.max*.2;guardian.state='idle';guardian.cool=0;bossAct(guardian,.01);assert.equal(guardian.pattern,'burst');bossAct(guardian,.9);assert.equal(run.bullets.length,15);guardian.state='recover';const hpBefore=guardian.hp;strike(guardian,2);assert.equal(guardian.hp,hpBefore-2.8);
  for(let id=2;id<=24;id++){
    level=await getLevel(id);assert.equal(level.id,id);assert.equal(level.boss,id%4===0);
