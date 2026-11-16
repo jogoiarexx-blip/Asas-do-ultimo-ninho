@@ -1,0 +1,27 @@
+ASAS DO ÚLTIMO NINHO · v0.3.0 — Three.js
+
+Extraia o ZIP inteiro e abra JOGAR.html no navegador.
+O jogo usa teclado no PC e também possui botões para telas sensíveis ao toque.
+A interface de voo traz HUD ampliado, identificação da fase e indicadores com barras visuais. A fase 04 recebeu o Guardião das Cinzas com três padrões de ataque sinalizados e janela de recuperação. No Ninho, ovos prontos agora passam por uma sequência animada de eclosão.
+
+Mover: setas ou WASD
+Sopro de fogo: segure Espaço
+Esquiva: Shift
+Fúria: F com a barra carregada
+Poder elemental: E após concluir a fase 04
+Pausar e salvar: P ou Esc
+
+Encoste nos ovos. Para salvar um filhote, destrua a jaula com o sopro e depois encoste nele.
+No ninho, use as escamas para construir a incubadora e melhorar o dragão.
+Abra novamente pelo mesmo arquivo e navegador para continuar sua partida.
+
+Na fase 04, observe o sinal luminoso: a faixa horizontal anuncia a rajada linear; as linhas em leque anunciam o ataque direcionado; o anel anuncia a explosão de brasas. O Guardião fica vulnerável por um breve período depois de cada investida.
+
+No Ninho, use “Chocar ovos” e avance após a animação para registrar cada novo filhote no berçário.
+
+Para continuar o desenvolvimento, leia CHECKPOINT.md. O design original está em docs/GDD.md.
+A cena 3D está em src e o jogo pronto para execução está em dist.
+A biblioteca Three.js está incluída no ZIP. Para recompilar após editar a cena, use npm install e npm run build.
+No ninho, arraste o dragão para girar a maquete ou use as setas com a maquete selecionada. Em HTTP, a campanha lê os arquivos JSON de levels.
+No modo offline, usa os pacotes equivalentes de levels-local. Após editar uma fase, rode python tools/preparar_offline.py para regenerar esses pacotes.
+Para testar em um servidor local, execute python -m http.server 8000 --directory dist e abra http://localhost:8000.
