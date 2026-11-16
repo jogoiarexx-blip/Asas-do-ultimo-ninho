@@ -1067,3 +1067,71 @@ dialog dd {
 @media(max-width:620px){.training-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.shield-return{font-size:7px}}
 @media(max-width:850px){#meters:has(.shield) .meter-head{flex-direction:column;gap:3px}#meters:has(.shield) .meter-label{font-size:8px}}
 @media(max-width:620px){#meters:has(.shield) .meter-label{font-size:7px}}
+
+/* V0.7.2 — navegação de campanha, Diário e Bestiário */
+.bar nav { gap: 5px; }
+.bar nav button { white-space: nowrap; transition: background .18s ease, border-color .18s ease; }
+.bar nav button:hover { background: #332b3b; color: #ffe9be; }
+.bar nav button.active { box-shadow: inset 0 -2px 0 #ffbd65; }
+.cover-links { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+.cover-links .ghost { background: #171325c9; border-color: #8c715c; color: #ffe6bd; }
+.archive-lead { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; padding:24px; margin-bottom:18px; border:1px solid #57495c; border-radius:10px; background:linear-gradient(115deg,#343044,#211f30 68%); }
+.archive-lead h2 { font-size:clamp(21px,2.3vw,30px); color:var(--cream); margin:2px 0 5px; }
+.archive-lead p, .bestiary-foot p { color:#c5bfce; font-size:13px; }
+.archive-status { align-self:flex-start; border:1px solid #545269; padding:8px 12px; border-radius:6px; background:#181725; font:700 11px var(--mono); letter-spacing:.5px; color:var(--mint); }
+.archive-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:29px 0 14px; }
+.archive-section-heading h3 { font-size:21px; color:var(--cream); }
+.archive-section-heading span { font:11px var(--mono); color:#bcb5cd; }
+.archive-realms { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.archive-realm { display:flex; flex-direction:column; gap:9px; background:#242133; border:1px solid #484052; border-radius:8px; padding:18px; }
+.archive-realm>span, .archive-record span { font:700 10px var(--mono); color:#ffca80; letter-spacing:.8px; }
+.archive-realm strong { font-size:16px; }
+.archive-realm small { color:var(--dim); font-size:12px; }
+.archive-progress { width:100%; height:7px; border-radius:999px; overflow:hidden; background:#131321; }
+.archive-progress i { display:block; height:100%; background:linear-gradient(90deg,#9c7056,#ffbf71); border-radius:inherit; }
+.archive-record { display:flex; flex-wrap:wrap; align-items:center; gap:20px; background:#211e2e; border:1px solid #484052; border-radius:8px; padding:18px; }
+.archive-record>div { flex:1 1 195px; display:grid; gap:5px; }
+.archive-record strong { font-size:14px; }
+.bestiary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.bestiary-entry { min-width:0; border:1px solid #4a4055; border-radius:9px; overflow:hidden; background:#211f30; }
+.bestiary-entry.discovered { border-top:3px solid var(--dragon-color); }
+.bestiary-art { display:grid; place-items:center; height:180px; background:radial-gradient(ellipse at 50% 80%,#595066,#30293d 62%,#241e31); }
+.bestiary-art img { width:min(90%,280px); height:100%; object-fit:contain; }
+.bestiary-art>span { color:#6d607a; font:700 80px var(--px); }
+.bestiary-entry.undiscovered .bestiary-art { background:radial-gradient(ellipse at 50% 80%,#393140,#211f2d); }
+.bestiary-copy { padding:18px; }
+.bestiary-copy h3 { font-size:19px; margin:5px 0 9px; }
+.bestiary-copy p { font-size:13px; color:#c6becc; margin:7px 0; }
+.bestiary-copy .bestiary-power { color:#f2cf9c; }
+.bestiary-copy small { display:block; color:#a9a2b3; font-size:12px; margin-top:9px; }
+.bestiary-foot { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-top:20px; padding:16px; border-radius:8px; background:#252234; }
+#area { max-width:1450px; margin-inline:auto; }
+@media(min-width:1100px) {
+  .bar, main { max-width:1720px; padding-inline:clamp(24px,2.75vw,48px); }
+  .bar { height:78px; gap:clamp(24px,3vw,58px); }
+  main { padding-top:21px; }
+  .screen, .screen:has(#game:not([hidden])) { aspect-ratio:16 / 9; max-height:min(85vh,900px); }
+  .console-foot { height:47px; }
+  .hero-copy h1 { font-size:clamp(49px,4.2vw,79px); }
+}
+@media(max-width:1099px) {
+  .bar { gap:12px; }
+  .bar nav { gap:1px; }
+  .bar nav button { padding-inline:10px; }
+}
+@media(max-width:850px) {
+  .archive-realms { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .bestiary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:700px) {
+  .bar { height:auto; min-height:92px; display:grid; grid-template-columns:1fr auto; grid-template-rows:44px 42px; column-gap:8px; row-gap:0; padding-block:4px; }
+  .bar .brand { grid-column:1; grid-row:1; }
+  .bar .sound { grid-column:2; grid-row:1; justify-self:end; }
+  .bar nav { grid-column:1 / -1; grid-row:2; width:100%; height:42px; min-width:0; overflow-x:auto; overscroll-behavior-inline:contain; scrollbar-width:thin; margin:0; }
+  .bar nav button { flex:0 0 auto; font-size:12px; padding:7px 10px; }
+  .archive-lead { padding:17px; }
+  .bestiary-grid, .archive-realms { grid-template-columns:1fr; }
+  .bestiary-art { height:160px; }
+  .bestiary-foot { flex-wrap:wrap; }
+  .archive-record { gap:12px; }
+}
