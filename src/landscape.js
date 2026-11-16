@@ -76,6 +76,38 @@ export class Landscape{
       else crystal(grove,x,1,-9,h*1.25,th);
     }
     this.layer(grove,20,0);
+    // Regional landmarks: fixed procedural geometry (no texture or network requests).
+    const details=new Sculpture();
+    for(let k=0;k<(lightweight?2:4);k++){
+      const x=52+k*154+(rng()-.5)*26, y=22+(rng()-.5)*7, z=-35;
+      if(level.region===0){ // Ash valley watchtowers and ember banners.
+        details.box(x,y+17,z,10,33,9,th.rock);
+        details.rod([x,y+35,z],[x-5,y+51,z],6,0,th.top,5);
+        details.tri([x+5,y+34,z+5],[x+24,y+27,z+5],[x+5,y+19,z+5],'#e69b69');
+      }else if(level.region===1){ // Ancient trunks with layered canopy.
+        details.rod([x,y-2,z],[x,y+46,z],8,5,th.near,6);
+        for(let j=-1;j<=1;j++)details.rod([x+j*10,y+37-Math.abs(j)*4,z],[x+j*11,y+51-Math.abs(j)*5,z],15,4,th.leaf,6);
+        details.rod([x,y+18,z],[x+20,y+6,z],3,0,th.tree,5);
+      }else if(level.region===2){ // Tall crystal needles.
+        for(let j=-1;j<=1;j++)crystal(details,x+j*12,y,z,(j===0?63:32)+rng()*11,th);
+      }else if(level.region===3){ // Ice arches and frosted stone markers.
+        details.rod([x-14,y,z],[x-7,y+43,z],7,3,th.leaf,5);
+        details.rod([x+15,y,z],[x+6,y+45,z],8,3,th.rock,5);
+        details.rod([x-7,y+43,z],[x+6,y+45,z],4,3,th.top,5);
+        for(let j=-1;j<=1;j++)crystal(details,x+j*13,y,z+3,13+7*(j===0),th);
+      }else if(level.region===4){ // Black volcanic spires and vents.
+        details.rod([x,y,z],[x-4,y+48,z],15,4,th.near,7);
+        details.rod([x-4,y+43,z],[x-8,y+61,z],5,0,th.leaf,5);
+        details.rod([x+12,y,z],[x+14,y+30,z],7,0,'#f18c58',5);
+      }else{ // Eclipse gates with runic pillars.
+        details.box(x-13,y+18,z,8,40,9,th.near);
+        details.box(x+13,y+18,z,8,40,9,th.near);
+        details.rod([x-13,y+39,z],[x,y+51,z],4,3,th.leaf,5);
+        details.rod([x,y+51,z],[x+13,y+39,z],3,4,th.leaf,5);
+        details.box(x,y+29,z+6,3,12,1,'#d6a1ba');
+      }
+    }
+    this.layer(details,9.5,0);
     if(level.training){
       const yard=new Sculpture();
       yard.box(240,4,-13,480,7,15,'#9c8e7d');
