@@ -113,9 +113,18 @@ function burst(x, y, col, n = 12) {
     particles.push({ x, y, vx: Math.cos(a) * (14 + Math.random() * 24), vy: Math.sin(a) * 27, life: 0.32, col });
   }
 }
+function encounterDifficulty() {
+  // One shared tuning curve for enemy resilience, movement and projectile pace.
+  if (save.difficulty === "Fácil") return { armor: 1, movement: 1, shots: 1, volleyCooldown: 4.2 };
+  if (save.difficulty === "Difícil") return { armor: 1.6, movement: 1.28, shots: 1.32, volleyCooldown: 1.95 };
+  // Normal is now a meaningful challenge without removing dodge / telegraph windows.
+  return { armor: 1.22, movement: 1.14, shots: 1.18, volleyCooldown: 2.45 };
+}
 function entity(kind, y, index) {
   const hp = { alvo: 30, rota: 1, passagem: 1, tesouro: 1, selo: 8, ovo: 1, jaula: 2, filhote: 1, barreira: 7, batedor: 1, arqueiro: 2, bruto: 4, sentinela: 7, boss: level.id === 4 ? 34 : 20 + level.region * 6, raio: 1 }[kind];
-  return { kind, y, base: y, x: kind === "raio" ? 0 : 503, age: 0, hp: hp + (run.ancient && ["boss", "arqueiro", "bruto"].includes(kind) ? 2 : 0), max: hp + (run.ancient && ["boss", "arqueiro", "bruto"].includes(kind) ? 2 : 0), cool: 2.1, serial: index, wave: 0 };
+  const scaled = ["batedor", "arqueiro", "bruto", "sentinela", "boss"].includes(kind) ? Math.ceil(hp * encounterDifficulty().armor) : hp;
+  const totalHp = scaled + (run.ancient && ["boss", "arqueiro", "bruto"].includes(kind) ? 2 : 0);
+  return { kind, y, base: y, x: kind === "raio" ? 0 : 503, age: 0, hp: totalHp, max: totalHp, cool: 2.1, serial: index, wave: 0 };
 }
 function hostile(e) {
   return ["alvo", "batedor", "arqueiro", "bruto", "sentinela", "boss"].includes(e.kind);
@@ -208,7 +217,7 @@ function ashGuardianAct(e, dt) {
   if (e.state === "warning") {
     e.telegraphLeft = Math.max(0, (e.telegraphLeft || 0) - dt);
     if (e.telegraphLeft <= 0) {
-      const speed = save.difficulty === "Difícil" ? 112 : save.difficulty === "Fácil" ? 82 : 96;
+      const speed = save.difficulty === "Difícil" ? 124 : save.difficulty === "Fácil" ? 82 : 108;
       if (e.pattern === "lane") {
         for (const offset of [-10, 0, 10]) run.bullets.push({ x: e.x - 15, y: e.aimY + offset, vx: -speed, vy: 0 });
         note(155, 0.2, "sawtooth", 0.045, 0, 62);
@@ -228,7 +237,8 @@ function ashGuardianAct(e, dt) {
     e.recover = Math.max(0, (e.recover || 0) - dt);
     if (e.recover <= 0) {
       e.state = "idle";
-      e.cool = e.phase === 2 ? 1.25 : 1.55;
+      const rest = e.phase === 2 ? 1.25 : 1.55;
+      e.cool = save.difficulty === "Fácil" ? rest + 0.3 : save.difficulty === "Difícil" ? Math.max(0.8, rest - 0.26) : Math.max(1, rest - 0.15);
     }
     return;
   }
@@ -238,7 +248,8 @@ function ashGuardianAct(e, dt) {
     e.pattern = ["lane", "fan", "burst"][e.phase];
     e.aimY = bound(run.p.y, 26, 198);
     e.aimX = Math.min(run.p.x, e.x - 40);
-    e.telegraphLeft = e.phase === 2 ? 0.82 : 1.02;
+    const warning = e.phase === 2 ? 0.82 : 1.02;
+    e.telegraphLeft = save.difficulty === "Fácil" ? warning + 0.22 : save.difficulty === "Difícil" ? Math.max(0.58, warning - 0.23) : Math.max(0.7, warning - 0.1);
     e.state = "warning";
     e.wave++;
     note(e.phase === 2 ? 205 : 170, 0.18, "triangle", 0.045, 0, e.phase === 2 ? 510 : 330);
@@ -251,11 +262,12 @@ function bossAct(e, dt) {
   }
   e.x = Math.max(379, e.x - dt * 45);
   let reg = level.region, phase = e.hp / e.max < 0.33 ? 2 : e.hp / e.max < 0.66 ? 1 : 0;
+  e.phase = phase; // Used by the boss HUD, save and difficulty tests.
   e.y = 105 + Math.sin(e.age * (0.7 + reg * 0.07)) * 48;
   e.cool -= dt;
   if (e.cool > 0 || e.x > 401) return;
   e.wave++;
-  let speed = (save.difficulty === "Difícil" ? 100 : 78) + reg * 3;
+  let speed = (save.difficulty === "Difícil" ? 116 : save.difficulty === "Fácil" ? 78 : 96) + reg * 3;
   switch (reg) {
     case 0:
       enemyFire(e, 3 + phase, 0.24, speed);
@@ -280,7 +292,8 @@ function bossAct(e, dt) {
       if (phase === 2 && e.wave % 2 === 0) run.entities.push(entity("arqueiro", e.y + 15, -e.wave));
       break;
   }
-  e.cool = (reg === 2 ? 2.8 : 2.5) - phase * 0.2 + (save.difficulty === "Fácil" ? 0.55 : 0);
+  const cadence = (reg === 2 ? 2.8 : 2.5) - phase * 0.2;
+  e.cool = save.difficulty === "Fácil" ? cadence + 0.55 : save.difficulty === "Difícil" ? cadence - 0.48 : cadence - 0.28;
 }
 function update(dt) {
   const p = run.p;
@@ -371,15 +384,15 @@ function update(dt) {
       if (e.age > 2.2) e.dead = true;
       else if (e.age >= 1.8 && Math.abs(e.y - p.y) < 8) hurt();
     } else {
-      let v = hostile(e) ? (kind === "bruto" ? 34 : kind === "sentinela" ? 20 : 46) + level.region * 2 : kind === "filhote" ? 26 : 38;
+      let v = hostile(e) ? ((kind === "bruto" ? 34 : kind === "sentinela" ? 20 : 46) + level.region * 2) * encounterDifficulty().movement : kind === "filhote" ? 26 : 38;
       if (hasFlightCompanion('Glacial') && hostile(e)) v *= 0.79;
       e.x -= dt * v;
       if (hostile(e)) {
         e.y = bound(e.base + Math.sin(e.age * (kind === "batedor" ? 2 : 1.1)) * 14, 21, 204);
         e.cool -= dt;
         if (kind !== "batedor" && e.x < 446 && e.cool < 0) {
-          enemyFire(e, kind === "sentinela" ? 3 : 1, 0.25, 58 + level.region * 4);
-          e.cool = save.difficulty === "Fácil" ? 4.2 : 3.1;
+          enemyFire(e, kind === "sentinela" ? 3 : 1, 0.25, (58 + level.region * 4) * encounterDifficulty().shots);
+          e.cool = encounterDifficulty().volleyCooldown;
         }
       }
     }
@@ -490,7 +503,7 @@ function draw() {
   const progress=document.querySelector('#routeProgress');
   progress.value=boss ? Math.round(100*boss.hp/boss.max) : Math.min(100,Math.round(100*run.t/(level.duration+(level.boss?0:5))));
   const exp = explorationState();
-  document.querySelector('#routeName').textContent=boss ? (level.id===24?'Senhor do Eclipse':level.id===4?'Guardião das Cinzas · Etapa '+(boss.phase+1):level.name) : (exp ? (run.t >= 90 ? 'Travessia final' : level.exploration.names[exp.route] || 'Ponte dos Esquecidos') : 'Percurso') + ' · '+progress.value+'%';
+  document.querySelector('#routeName').textContent=boss ? (level.id===24?'Senhor do Eclipse · Etapa '+(boss.phase+1):level.id===4?'Guardião das Cinzas · Etapa '+(boss.phase+1):level.name+' · Etapa '+(boss.phase+1)) : (exp ? (run.t >= 90 ? 'Travessia final' : level.exploration.names[exp.route] || 'Ponte dos Esquecidos') : 'Percurso') + ' · '+progress.value+'%';
   drawExploration();
   drawTraining();
 }
