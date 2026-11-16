@@ -21,11 +21,28 @@ function dragonStats(up = save.up, team = activeCompanions(), nest = save.nest, 
     shieldMax: v.def >= 3 ? 2 : v.def ? 1 : 0, shieldDelay: [0, 16, 12, 10][v.def]
   };
 }
+// Economia v0.7.1: custos crescentes, iguais no painel e na validação da compra.
+const ECONOMY = Object.freeze({
+  atk:    [[18, 0, 0], [36, 1, 0], [65, 3, 0], [105, 5, 1]],
+  hp:     [[18, 0, 0], [36, 1, 0], [65, 3, 0], [105, 5, 1]],
+  speed:  [[18, 0, 0], [36, 1, 0], [65, 3, 0], [105, 5, 1]],
+  def:    [[40, 2, 0], [80, 4, 0], [135, 7, 1]],
+  energy: [[35, 2, 0], [70, 3, 0], [125, 5, 1], [190, 7, 2]],
+  regen:  [[45, 3, 0], [90, 5, 1], [155, 8, 2]]
+});
+// O índice indica o nível atual do Ninho antes de construir o seguinte.
+const NEST_ECONOMY = Object.freeze({
+  1: { scales: 25, cores: 0 },
+  2: { scales: 60, cores: 0 },
+  3: { scales: 120, cores: 2 },
+  4: { scales: 210, cores: 3 }
+});
+function nestUpgradeCost(level) { return NEST_ECONOMY[level] || null; }
 function upgradeCost(key, value) {
-  if (['atk', 'hp', 'speed'].includes(key)) return { scales: 5 + value * 5, embers: value >= 2 ? 2 : 0, cores: 0 };
-  if (key === 'def') return { scales: 10 + value * 8, embers: 1 + value, cores: value === 2 ? 1 : 0 };
-  if (key === 'energy') return { scales: 12 + value * 7, embers: 1 + Math.floor(value / 2), cores: value >= 2 ? 1 : 0 };
-  return { scales: 14 + value * 8, embers: 2 + value, cores: value === 2 ? 1 : 0 };
+  const stages = ECONOMY[key];
+  if (!stages || value < 0 || value >= stages.length) return { scales: 0, embers: 0, cores: 0 };
+  const [scales, embers, cores] = stages[value];
+  return { scales, embers, cores };
 }
 function upgradeState(key, s = save) {
   if (!Object.hasOwn(UPGRADE_DEFS, key)) return null;
