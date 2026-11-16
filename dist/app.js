@@ -28,8 +28,9 @@ function tile(icon, label, title, sub) {
 function journal() {
   const n = selected, done = cardCount(save.medals), last = save.last;
   $("#stageLabel").textContent = "Fase " + pad(n) + " · " + TITLES[n - 1] + "　/　" + REALMS[Math.floor((n - 1) / 4)];
-  const journalCards = $("#journal");
-  if (journalCards) journalCards.innerHTML = tile("map", "CAMPANHA", done + " de 24 fases", "Reino " + (Math.floor((n - 1) / 4) + 1) + " · " + REALMS[Math.floor((n - 1) / 4)]) + tile("egg", "RESGATES", cardCount(save.eggs) + " " + (cardCount(save.eggs) === 1 ? "ovo" : "ovos") + " · " + cardCount(save.babies) + " " + (cardCount(save.babies) === 1 ? "filhote" : "filhotes"), "Coleção do ninho") + tile("flag", "ÚLTIMO CHECKPOINT", last ? "Fase " + pad(last.id) + (last.type === "voo" ? " · " + last.t + " s" : " concluída") : "Início da jornada", last ? last.type === "voo" ? "Progresso de voo salvo" : "Retorno ao ninho" : "Vale das Cinzas");
+  // O Diario existe apenas na pagina propria; checkpoints atualizam esta funcao sem ele.
+  const journalCards = document.getElementById("journal");
+  if (journalCards !== null) journalCards.innerHTML = tile("map", "CAMPANHA", done + " de 24 fases", "Reino " + (Math.floor((n - 1) / 4) + 1) + " · " + REALMS[Math.floor((n - 1) / 4)]) + tile("egg", "RESGATES", cardCount(save.eggs) + " " + (cardCount(save.eggs) === 1 ? "ovo" : "ovos") + " · " + cardCount(save.babies) + " " + (cardCount(save.babies) === 1 ? "filhote" : "filhotes"), "Coleção do ninho") + tile("flag", "ÚLTIMO CHECKPOINT", last ? "Fase " + pad(last.id) + (last.type === "voo" ? " · " + last.t + " s" : " concluída") : "Início da jornada", last ? last.type === "voo" ? "Progresso de voo salvo" : "Retorno ao ninho" : "Vale das Cinzas");
   $("#launch span").textContent = save.cp ? "Continuar voo" : done ? "Iniciar fase " + pad(n) : "Iniciar aventura";
   paintIcons();
 }
@@ -484,6 +485,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.2</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois. A versão 0.7.1 aumentou progressivamente os preços das construções e das habilidades, valorizando a exploração e os resgates.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
+  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.3</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois. A versão 0.7.1 aumentou progressivamente os preços das construções e das habilidades, valorizando a exploração e os resgates.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
   $("#dialog").showModal();
 };
