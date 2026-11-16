@@ -91,7 +91,14 @@ export class FlightView{
     });
     for(const e of run.entities){
       if(e.dead)continue;const m=place(e,e.kind==='rota'&&e.route==='lower'?'rotaBaixa':e.kind,e.kind==='raio'?240:e.x,e.y,1);
-      if(creatures.has(e.kind))animateDragon(m,t+e.serial*.23);
+      if(creatures.has(e.kind)) {
+        const intensity=e.kind==='boss' ? 1.35 : e.kind==='batedor' ? 1.18 : .92;
+        animateDragon(m,t+e.serial*.23,0,intensity);
+        if(e.kind==='boss') {
+          const pulse=e.state==='warning'?1.055+Math.sin(t*19)*.035:e.state==='recover'?.97:1;
+          m.scale.set(-1.77*pulse,1.77*pulse,1.77*pulse);
+        }
+      }
       else if(e.kind==='ovo'){m.rotation.y=t*1.4;m.position.y+=Math.sin(t*3.3)*1.5}
       else if(e.kind==='jaula')m.rotation.y=.28+Math.sin(t)*.09;
       else if(e.kind==='barreira')m.rotation.y=t*.4;
