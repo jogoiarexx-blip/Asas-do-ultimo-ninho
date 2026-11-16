@@ -1135,3 +1135,38 @@ dialog dd {
   .bestiary-foot { flex-wrap:wrap; }
   .archive-record { gap:12px; }
 }
+
+/* v0.7.5 — HUD de chefe legível e compacto, sem cobrir o jogador */
+.boss-health {
+  position:absolute;z-index:6;top:clamp(84px,9vw,108px);left:50%;transform:translateX(-50%);
+  pointer-events:none;width:min(490px,56%);padding:9px 13px 11px;
+  color:#ffead4;border:1px solid #ba7c71aa;border-radius:8px;
+  background:linear-gradient(110deg,#241923e8,#392a38ed);
+  box-shadow:0 5px 24px #170b1a80,0 0 12px #f5a26e33;
+}
+.boss-health-head{display:flex;justify-content:space-between;gap:14px;align-items:baseline;
+  font:700 11px/1.35 var(--mono);text-shadow:0 1px 3px #120b14}
+.boss-health-head strong{font-size:12px;color:#ffe6b7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.boss-health-head span{font-size:9px;color:#ffd6a9;text-align:right;white-space:nowrap}
+.boss-health-track{height:8px;border-radius:20px;overflow:hidden;background:#281e2b;margin-top:7px;border:1px solid #684652}
+.boss-health-track i{display:block;height:100%;width:100%;border-radius:inherit;
+  background:linear-gradient(90deg,#cb5675,#f1ad67);transition:width .15s linear}
+.boss-health.warning{border-color:#ffb15c;box-shadow:0 0 18px #ff8a3377}
+.boss-health.warning .boss-health-track i{background:linear-gradient(90deg,#e35b54,#ffbd65)}
+.boss-health.recover{border-color:#93d6ad;box-shadow:0 0 10px #80ddb366}
+.boss-health.recover .boss-health-head span{color:#bcf1cc}
+@media(max-width:850px){
+ .boss-health{top:clamp(65px,11vw,90px);width:min(380px,66%);padding:7px 9px}
+ .boss-health-head{flex-wrap:wrap;gap:3px}
+ .boss-health-head strong{font-size:10px}
+ .boss-health-head span{font-size:8px}
+ .boss-health-track{height:6px;margin-top:5px}
+}
+@media(max-width:560px){
+ .boss-health{top:67px;left:auto;right:7px;transform:none;width:45%;padding:5px 7px}
+ .boss-health-head{display:block}
+ .boss-health-head strong{display:block;font-size:9px}
+ .boss-health-head span{display:block;text-align:left;font-size:7px;margin-top:2px}
+ .boss-health-track{height:5px;margin-top:3px}
+}
+@media(prefers-reduced-motion:reduce){.boss-health-track i{transition:none}}
