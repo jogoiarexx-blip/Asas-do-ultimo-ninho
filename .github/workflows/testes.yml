@@ -1,0 +1,33 @@
+name: Testar Asas do Último Ninho
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dist/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/testes.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Testes de campanha, evolução, chefes e cena 3D
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependências de desenvolvimento
+        run: npm ci
+      - name: Executar todos os testes, incluindo Three.js
+        run: npm test
