@@ -44,7 +44,10 @@ function modelFor(kind,region,save){
     model=dragonModel(type,kind==='boss'||(kind==='jogador'&&!!save.medals[4]));
     scale={jogador:save.medals[12]?1:.79,companheiro:.37,filhote:.45,boss:1.77,sentinela:.88,bruto:.63,arqueiro:.52,batedor:.46}[kind];
     model.scale.setScalar(buddy ? .32 : scale);
-    if(!buddy&&!['jogador','filhote','companheiro'].includes(kind))model.rotation.y=Math.PI;
+    // Enemies must face left without turning their belly away from the camera.
+    // A 180° Y rotation exposes the back and reads visually as an upside-down dragon.
+    // Mirror X only: silhouette faces the player while local Y stays upright.
+    if(!buddy&&!['jogador','filhote','companheiro'].includes(kind))model.scale.x *= -1;
   }else model=objectModel(kind);
   return model;
 }
