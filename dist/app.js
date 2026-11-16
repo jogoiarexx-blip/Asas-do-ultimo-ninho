@@ -57,6 +57,7 @@ function home() {
   mode = "menu";
   flightView?.release();
   run = null;
+  $('#trainingPanel').hidden = true; $('#trainingSignal').hidden = true;
   particles = [];
   $("#cover").hidden = false;
   game.hidden = true;
@@ -64,6 +65,7 @@ function home() {
   $("#hud").hidden = true;
   $("#flightInfo").hidden = true;
   $("#bossSignal").hidden = true;
+  $('#explorationMarkers').hidden = true;
   $("#touch").hidden = true;
   $("#ready").textContent = "PRONTO PARA VOAR";
   journal();
@@ -77,6 +79,7 @@ async function startFlight(id, resume = false) {
   let ticket = ++requestId;
   cancelAnimationFrame(raf);
   mode = "loading";
+  $("#trainingPanel").hidden = true; $("#trainingSignal").hidden = true;
   leaveNest();
   page = "jogar";
   $("#jogar").hidden = false;
@@ -87,6 +90,7 @@ async function startFlight(id, resume = false) {
   $("#hud").hidden = true;
   $("#flightInfo").hidden = true;
   $("#bossSignal").hidden = true;
+  $('#explorationMarkers').hidden = true;
   overlay("CAMPANHA", "Preparando voo…", TITLES[id - 1], []);
   let loaded;
   try {
@@ -107,6 +111,7 @@ async function startFlight(id, resume = false) {
   level = loaded;
   selected = id;
   run = resume && save.cp?.id === id ? JSON.parse(JSON.stringify(save.cp.run)) : freshRun();
+  run.companions ??= [...activeCompanions()];
   mode = "flight";
   keys.clear();
   particles = [];
@@ -125,6 +130,11 @@ function pauseFlight() {
   keys.clear();
   mode = "paused";
   cancelAnimationFrame(raf);
+  if (isTraining()) {
+    $('#ready').textContent = 'TREINO PAUSADO';
+    overlay('CAMPO DE TREINAMENTO', 'Treino pausado', 'Seu voo da campanha continua guardado. O treino não concede recursos ou medalhas.', [['Continuar treino', 'resume'], ['Voltar ao ninho', 'trainingExit']]);
+    return;
+  }
   checkpoint();
   journal();
   $("#ready").textContent = "VOO PAUSADO";
@@ -134,12 +144,13 @@ function resumeFlight() {
   if (mode !== "paused") return;
   mode = "flight";
   $("#overlay").hidden = true;
-  $("#ready").textContent = "EM VOO";
+  $("#ready").textContent = isTraining() ? "TREINAMENTO" : "EM VOO";
   game.focus({ preventScroll: true });
   animate();
 }
 function endFlight(won) {
   if (mode !== "flight") return;
+  if (isTraining()) { leaveTraining(); return; }
   mode = won ? "won" : "lost";
   cancelAnimationFrame(raf);
   keys.clear();
@@ -147,6 +158,7 @@ function endFlight(won) {
   $("#hud").hidden = true;
   $("#flightInfo").hidden = true;
   $("#bossSignal").hidden = true;
+  $('#explorationMarkers').hidden = true;
   let id = level.id;
   if (won) {
     const ranks = ["Bronze", "Prata", "Ouro"];
@@ -163,11 +175,18 @@ function endFlight(won) {
       if (run.ancient) save.raids++;
     }
     save.cp = null;
+    if (level.exploration) {
+      save.exploration ??= { rewards: {}, routes: {} };
+      const x = explorationState();
+      save.exploration.routes[id + '-' + x.path] = true;
+      if (x.route === 'secret') save.exploration.routes[id + '-secret'] = true;
+    }
     save.last = { id, t: Math.floor(run.t), type: "fim" };
     selected = unlocked();
     writeSave();
     chime();
-    overlay((run.ancient ? "DESAFIO ANCESTRAL" : "FASE " + pad(id)) + " · " + rank.toUpperCase(), id === 24 ? "Grande Ninho restaurado!" : "Missão concluída!", (id === 24 ? "O Eclipse caiu. As fases do mapa agora têm desafios ancestrais. " : "") + "+" + scales + " escamas · " + run.eggs.length + "/" + level.eggs + " ovos · " + run.babies.length + "/" + level.babies + " filhotes.", id === 24 ? [["Visitar ninho", "nest"], ["Ver mapa", "map"]] : [["Próxima fase", "next"], ["Visitar ninho", "nest"]]);
+    const explorationSummary = level.exploration ? ' Rota: ' + level.exploration.names[run.exploration.path || 'main'] + (run.exploration.route === 'secret' ? ' + Câmara dos Ecos' : '') + ' · ' + run.exploration.rewards.length + ' tesouro(s) encontrado(s) · ' + run.exploration.bonus + ' escamas de exploração já guardadas.' : '';
+    overlay((run.ancient ? "DESAFIO ANCESTRAL" : "FASE " + pad(id)) + " · " + rank.toUpperCase(), id === 24 ? "Grande Ninho restaurado!" : "Missão concluída!", (id === 24 ? "O Eclipse caiu. As fases do mapa agora têm desafios ancestrais. " : "") + "+" + scales + " escamas · " + run.eggs.length + "/" + level.eggs + " ovos · " + run.babies.length + "/" + level.babies + " filhotes." + explorationSummary, id === 24 ? [["Visitar ninho", "nest"], ["Ver mapa", "map"]] : [["Próxima fase", "next"], ["Visitar ninho", "nest"]]);
     $("#ready").textContent = "MISSÃO CONCLUÍDA";
   } else {
     note(150, 0.45, "triangle", 0.07, 0, 50);
@@ -185,6 +204,17 @@ function mapUI() {
   }).join("") + "</div></div>").join("");
 }
 const upLabels = { atk: "Sopro de fogo", hp: "Escamas reforçadas", speed: "Asas velozes" }, upDesc = { atk: "Aumenta o dano de cada disparo.", hp: "Acrescenta dois pontos de vida.", speed: "Acelera o voo e reduz a recarga da esquiva." }, nestNames = ["", "Abrigo básico", "Incubadora e berçário", "Oficina de escamas", "Santuário elemental", "Grande Ninho"];
+function nurseryUI() {
+  const team = activeCompanions(), capacity = companionSlots();
+  const slots = [0, 1].map(i => '<div class="companion-slot ' + (team[i] ? 'equipped' : '') + '"><span>COMPANHEIRO ' + (i + 1) + '</span><strong>' + (team[i] || (i >= capacity ? 'Ninho nível ' + (i ? 3 : 2) : 'Espaço livre')) + '</strong>' + (team[i] ? '<button class="ghost" data-equip="' + team[i] + '">Retirar</button>' : '') + '</div>').join('');
+  return '<section class="nursery"><div class="nursery-heading"><div><div class="kicker">BERÇÁRIO · ' + Object.values(save.babies).length + ' FILHOTES</div><h3>Quem voa com você?</h3></div><span>' + team.length + ' / ' + capacity + ' equipados</span></div><p class="muted">Cada espécie ocupa um espaço. O primeiro abre no ninho 2 e o segundo no ninho 3. As habilidades da dupla se combinam.' + (save.cp ? ' O voo salvo mantém a equipe anterior; as trocas valem ao iniciar outro voo.' : '') + '</p><div class="companion-slots">' + slots + '</div><div class="dragon-cards">' + Object.entries(DRAGONS).map(([name, info]) => {
+    const count = Object.values(save.babies).filter(s => s === name).length;
+    const eggs = Object.values(save.eggs).filter(e => e.species === name && !e.hatched).length;
+    const equipped = team.includes(name), full = !equipped && team.length >= capacity;
+    const label = equipped ? 'Retirar da equipe' : !count ? 'Ainda não resgatado' : !capacity ? 'Requer ninho 2' : full ? 'Equipe completa' : 'Levar no próximo voo';
+    return '<article class="dragon-card ' + (count ? '' : 'undiscovered') + '" style="--dragon-color:' + info.color + '"><div class="dragon-portrait"><img src="portraits/' + info.model + '.svg" width="174" height="120" alt="Dragão ' + name + '" loading="lazy"><span>' + info.element + '</span></div><div class="dragon-card-body"><div class="kicker">' + info.role + '</div><h4>Dragão ' + name + '</h4><p>' + info.power + '</p><small>' + info.trait + ' · ' + info.home + '</small><div class="dragon-count">' + count + ' no berçário' + (eggs ? ' · ' + eggs + ' ovo(s) em incubação' : '') + '</div><button class="' + (equipped ? 'ghost' : 'gold') + '" data-equip="' + name + '" aria-pressed="' + equipped + '" ' + (!count || !capacity || full ? 'disabled' : '') + '>' + label + '</button></div></article>';
+  }).join('') + '</div></section>';
+}
 function nestUI() {
   const e = Object.entries(save.eggs), b = Object.values(save.babies), ready = e.filter(([, x]) => !x.hatched && x.left === 0).length;
   $("#areaTitle").textContent = "O ninho";
@@ -196,9 +226,13 @@ function nestUI() {
   content += '</div><div class="grid">' + Object.keys(upLabels).map((key) => {
     let val = save.up[key], cost = 5 + val * 5, ember = val >= 2 ? 2 : 0;
     return '<div class="box"><div class="kicker">MELHORIA · ' + val + "/4</div><h3>" + upLabels[key] + "</h3><p>" + upDesc[key] + '</p><button class="ghost" data-buy="' + key + '" ' + (val >= 4 || save.scales < cost || save.embers < ember ? "disabled" : "") + ">" + (val >= 4 ? "Nível máximo" : "Melhorar · " + cost + " escamas" + (ember ? " + 2 brasas" : "")) + "</button></div>";
-  }).join("") + '</div><div class="grid"><div class="box"><div class="kicker">OVOS</div><h3>Incubadora</h3><p>' + ready + ' prontos para nascer. A incubação avança ao concluir missões.</p><button class="ghost" data-act="hatch" ' + (!ready || save.nest < 2 ? "disabled" : "") + ">" + (save.nest < 2 ? "Requer ninho nível 2" : "Chocar ovos") + '</button></div><div class="box"><div class="kicker">FILHOTES · ' + b.length + "</div><h3>Berçário</h3><p>" + (b.length ? "Escolha o companheiro do próximo voo." : "Quebre as jaulas e toque nos filhotes para resgatá-los.") + "</p>" + [...new Set(b)].map((s) => '<button class="ghost" data-equip="' + s + '" ' + (s === save.companion || save.nest < 2 ? "disabled" : "") + ">" + s + (s === save.companion ? " ✓" : "") + "</button>").join(" ") + '</div><div class="box"><div class="kicker">CAMPANHA</div><h3>Dificuldade</h3><p>Vale a partir do próximo voo iniciado.</p><select aria-label="Dificuldade" id="difficulty" ' + (save.cp ? "disabled" : "") + ">" + ["Fácil", "Normal", "Difícil"].map((d) => "<option " + (save.difficulty === d ? "selected" : "") + ">" + d + "</option>").join("") + "</select></div></div>";
+  }).join("") + '</div><div class="grid"><div class="box"><div class="kicker">OVOS</div><h3>Incubadora</h3><p>' + ready + ' prontos para nascer. A incubação avança ao concluir missões.</p><button class="ghost" data-act="hatch" ' + (!ready || save.nest < 2 ? "disabled" : "") + ">" + (save.nest < 2 ? "Requer ninho nível 2" : "Chocar ovos") + '</button></div><div class="box"><div class="kicker">FILHOTES · ' + b.length + "</div><h3>Berçário</h3><p>" + (b.length ? "Consulte as espécies e monte a equipe abaixo." : "Quebre as jaulas e toque nos filhotes para resgatá-los.") + "</p>" + '</div><div class="box"><div class="kicker">CAMPANHA</div><h3>Dificuldade</h3><p>Vale a partir do próximo voo iniciado.</p><select aria-label="Dificuldade" id="difficulty" ' + (save.cp ? "disabled" : "") + ">" + ["Fácil", "Normal", "Difícil"].map((d) => "<option " + (save.difficulty === d ? "selected" : "") + ">" + d + "</option>").join("") + "</select></div></div>";
+  content += '<div class="box training-entry"><div><div class="kicker">NINHO · PRÁTICA</div><h3>Campo de treinamento</h3><p>Teste o sopro, os poderes e a dupla. Alvos fixos, mira em movimento e esquiva, sem gastar recursos. O voo da campanha continua guardado.</p></div><button class="gold" data-act="trainingStart" ' + (save.nest < 3 ? 'disabled' : '') + '>' + (save.nest < 3 ? 'Requer ninho nível 3' : 'Entrar no campo') + '</button></div>';
+  content += nurseryUI();
+  const discoveries = save.exploration || { rewards: {}, routes: {} };
+  content += '<div class="box exploration-collection"><div class="kicker">EXPLORAÇÃO · FASE 02</div><h3>Memórias da ponte</h3><p>Conclua os caminhos e encontre os três tesouros únicos. Cada tesouro concede escamas uma vez.</p><div class="discovery-grid">' + [['upper','Ruínas superiores'],['lower','Desfiladeiro âmbar'],['main','Ponte central'],['secret','Câmara dos Ecos']].map(([key,label]) => '<span class="' + (discoveries.routes['2-'+key] ? 'found' : '') + '">' + (discoveries.routes['2-'+key] ? '✓ ' : '◇ ') + label + '</span>').join('') + '</div><div class="discovery-grid">' + [['ruinas','Tesouro das ruínas · 8 escamas'],['canion','Tesouro do desfiladeiro · 8 escamas'],['ecos','Relíquia dos Ecos · 20 escamas']].map(([key,label]) => '<span class="' + (discoveries.rewards['2-'+key] ? 'found' : '') + '">' + (discoveries.rewards['2-'+key] ? '✓ ' : '◇ ') + label + '</span>').join('') + '</div></div>';
   leaveNest();
-  $("#areaContent").innerHTML = '<div class="nest-preview"><div id="nestScene" tabindex="0" aria-label="Girar a maquete do ninho com as setas"></div><span>Arraste para girar</span></div>'+content;
+  $("#areaContent").innerHTML = '<div class="nest-preview" data-nest-level="'+save.nest+'"><div class="nest-scene-caption"><span>NINHO '+save.nest+' / 5</span><strong>'+nestNames[save.nest]+'</strong></div><div id="nestScene" tabindex="0" aria-label="Girar a maquete do ninho com as setas"></div><span>Arraste para girar</span></div>'+content;
   if(typeof Ninho3D!=="undefined")closeNestView=Ninho3D.nestView($("#nestScene"),save);
 }
 function renderHatchStep() {
@@ -277,6 +311,7 @@ document.addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
   if (!b) return;
   const d = b.dataset;
+  if (d.trainingDrill) { changeTrainingDrill(d.trainingDrill); return; }
   if (d.hatchNext) { advanceHatchSequence(); return; }
   if (d.page) showPage(d.page);
   if (d.stage) askStage(+d.stage);
@@ -285,12 +320,18 @@ document.addEventListener("click", (ev) => {
     startFlight(+d.confirmStage);
   }
   if (d.buy) buy(d.buy);
-  if (d.equip && save.nest >= 2 && Object.values(save.babies).includes(d.equip)) {
-    save.companion = d.equip;
-    writeSave();
-    nestUI();
+  if (d.equip) {
+    const result = changeCompanion(d.equip);
+    if (result === 'locked') return toast('Resgate ou choque um ovo desta espécie primeiro.');
+    if (result === 'full') return toast(companionSlots() ? 'Equipe completa. Retire um companheiro para trocar.' : 'Construa o ninho nível 2 para equipar companheiros.');
+    writeSave(); nestUI(); chime();
+    toast(result === 'added' ? d.equip + ' entrou na equipe do próximo voo.' : d.equip + ' voltou ao berçário.');
   }
   switch (d.act) {
+    case 'trainingStart': startTraining(); break;
+    case 'trainingExit': leaveTraining(); break;
+    case 'trainingRefill': refillTraining(); break;
+    case 'trainingReset': if (isTraining()) changeTrainingDrill(run.training.drill); break;
     case "resume":
       resumeFlight();
       break;
@@ -334,7 +375,7 @@ $(".brand").onclick = (e) => {
 };
 $("#help").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">GUIA DE VOO</div><h2>Controles</h2><dl><dt>Movimentar</dt><dd>WASD / Setas</dd><dt>Sopro de fogo</dt><dd>Segurar Espaço</dd><dt>Esquiva</dt><dd>Shift</dd><dt>Fúria carregada</dt><dd>F</dd><dt>Poder elemental</dt><dd>E · após fase 04</dd><dt>Pausar e salvar</dt><dd>P / Esc</dd></dl><p class="muted">Toque nos ovos para recolhê-los. Atire nas jaulas antes de se aproximar dos filhotes.</p><br>';
+  $("#dialogContent").innerHTML = '<div class="kicker">GUIA DE VOO</div><h2>Controles</h2><dl><dt>Movimentar</dt><dd>WASD / Setas</dd><dt>Sopro de fogo</dt><dd>Segurar Espaço</dd><dt>Esquiva</dt><dd>Shift</dd><dt>Fúria carregada</dt><dd>F</dd><dt>Poder elemental</dt><dd>E · após fase 04</dd><dt>Pausar e salvar</dt><dd>P / Esc</dd></dl><p class="muted">Toque nos ovos para recolhê-los. Atire nas jaulas antes de se aproximar dos filhotes. Na fase 02, toque nos arcos para escolher uma rota. Quebre o selo com fogo e toque na entrada verde para encontrar a câmara secreta. No ninho, equipe até dois companheiros a partir do nível 3; suas habilidades funcionam juntas. Nesse nível, o campo de treinamento permite praticar sem alterar a campanha.</p><br>';
   $("#dialog").showModal();
 };
 $("#closeDialog").onclick = () => $("#dialog").close();
@@ -388,6 +429,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.3</div><h2>Guardião das Cinzas</h2><p>O primeiro chefe agora apresenta três padrões de ataque com sinais visuais, preparação e janela de recuperação. O ninho ganhou uma sequência animada de eclosão.</p><br><p class="muted"><strong>Próximo marco</strong><br>Expandir as áreas de exploração, adicionar rotas alternativas e testar o balanceamento com jogadores.</p><br>'; 
+  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.6</div><h2>Asas em Treinamento</h2><p>O ninho nível 3 agora abre um campo com alvos fixos, mira em movimento e esquiva contra rajadas sinalizadas. Veja o dano, o ritmo dos ataques, os alvos destruídos e os impactos recebidos.</p><br><p>Teste a dupla equipada, recarregue vida e poderes e repita os exercícios. O poder E fica disponível dentro do treino mesmo antes de ser liberado na campanha.</p><br><p class="muted">O treino não concede moedas, não avança a incubação e não substitui o voo salvo. As 24 fases, as rotas de exploração, o berçário e o GDD completo continuam no pacote.</p><br>';
   $("#dialog").showModal();
 };

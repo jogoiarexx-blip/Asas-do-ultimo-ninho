@@ -45,6 +45,7 @@ function ruins(s,x,y,z,th){
 export class Landscape{
   constructor(scene,level,lightweight){
     this.group=new Group();scene.add(this.group);this.layers=[];
+    this.level=level;this.lightweight=lightweight;
     const th=themes[level.region],rng=rand(level.id*8191);
     this.gradient='linear-gradient('+th.sky[0]+', '+th.sky[1]+' 53%, '+th.sky[2]+' 89%)';
     const sky=new Sculpture();const sun=[360,159,-175],radius=21;for(let k=0;k<36;k++){const a=k*Math.PI/18,b=(k+1)*Math.PI/18;sky.tri(sun,[sun[0]+Math.cos(a)*radius,sun[1]+Math.sin(a)*radius,-175],[sun[0]+Math.cos(b)*radius,sun[1]+Math.sin(b)*radius,-175],'#fff1bc')}
@@ -75,8 +76,56 @@ export class Landscape{
       else crystal(grove,x,1,-9,h*1.25,th);
     }
     this.layer(grove,20,0);
+    if(level.training){
+      const yard=new Sculpture();
+      yard.box(240,4,-13,480,7,15,'#9c8e7d');
+      for(let x=30;x<480;x+=45){yard.box(x,10,-15,3,13,3,'#e0caa0');yard.box(x,18,-15,7,2,5,'#b18b7c');}
+      yard.rod([50,10,-20],[50,75,-20],1.2,1.2,'#cfb58f',5);
+      yard.quad([50,72,-20],[76,68,-20],[76,53,-20],[50,58,-20],'#7e9d94');
+      const prop=yard.mesh();prop.name='training-yard';this.group.add(prop);
+    }
   }
   layer(s,speed,z){const m=s.mesh();const pair=new Group();pair.add(m);const twin=m.clone();twin.position.x=WIDTH;pair.add(twin);pair.position.z=z;this.group.add(pair);this.layers.push({pair,speed})}
-  update(t){for(const {pair,speed} of this.layers)pair.position.x=-(t*speed%WIDTH)}
+  setExploration(route){
+    if(this.exploreRoute===route)return;
+    this.exploreRoute=route;
+    if(this.exploreGroup){this.exploreGroup.removeFromParent();disposeTree(this.exploreGroup);this.exploreGroup=null;}
+    if(!route)return;
+    const a=new Sculpture(),th=themes[this.level.region];
+    if(route==='secret')a.box(WIDTH/2,111,-49,WIDTH,600,1,'#263e4e');
+    for(let i=0;i<(this.lightweight?4:6);i++){
+      const x=48+i*(this.lightweight?160:108);
+      if(route==='upper'){
+        ruins(a,x,50,-15,th);
+        a.rod([x,55,-20],[x,82,-20],4,3,'#c1aca2',5);
+        a.box(x,84,-20,15,4,9,'#dfc4a5');
+      } else if(route==='lower') {
+        a.rod([x,-20,-18],[x,29,-18],24,8,'#855e61',6);
+        a.rod([x,222,-25],[x-10,194,-25],21,0,'#aa7f75',5);
+        crystal(a,x,30,-17,12,th);
+      } else if(route==='secret') {
+        a.rod([x,-20,-20],[x,35,-20],30,9,'#425b66',6);
+        a.rod([x,240,-25],[x+8,197,-25],32,0,'#425b66',6);
+        crystal(a,x-8,34,-16,18,{tree:'#488782',leaf:'#a4efd0'});
+        a.box(x+17,62,-21,3,12,2,'#9ae6c5');
+        a.rod([x-38,-5,-44],[x-38,132,-44],3.2,3.2,'#496b7a',5);
+        for(let j=0;j<8;j++){
+          const u=j*Math.PI/8,v=(j+1)*Math.PI/8;
+          a.rod([x+Math.cos(u)*38,132+Math.sin(u)*46,-44],[x+Math.cos(v)*38,132+Math.sin(v)*46,-44],2.4,2.4,'#496b7a',4);
+        }
+      }
+    }
+    this.exploreGroup=new Group();const m=a.mesh();this.exploreGroup.add(m);
+    const twin=m.clone();twin.position.x=WIDTH;this.exploreGroup.add(twin);this.group.add(this.exploreGroup);
+  }
+  update(t,exploration){
+    const travel=this.level.training?0:t;
+    for(const {pair,speed} of this.layers)pair.position.x=-(travel*speed%WIDTH);
+    if(this.level.exploration){
+      const route=t>=90?null:exploration?.route;
+      this.setExploration(['upper','lower','secret'].includes(route)?route:null);
+      if(this.exploreGroup)this.exploreGroup.position.x=-(t*this.level.exploration.scrollSpeed%WIDTH);
+    }
+  }
   dispose(){this.group.removeFromParent();disposeTree(this.group)}
 }

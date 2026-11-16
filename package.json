@@ -1,11 +1,12 @@
 {
   "name": "asas-do-ultimo-ninho",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "build": "esbuild src/flight-view.js --bundle --format=iife --global-name=Ninho3D --minify --legal-comments=eof --outfile=dist/vendor/flight-view.js",
-    "test": "node tests/campaign.cjs && node tests/scene.mjs"
+    "test": "node tests/campaign.cjs && node tests/exploration.cjs && node tests/companions.cjs && node tests/training.cjs && node tests/scene.mjs",
+    "portraits": "node tools/generate_portraits.mjs"
   },
   "dependencies": {
     "three": "0.187.0"

@@ -1114,3 +1114,17 @@ A campanha de 24 fases será a primeira grande jornada, mas a arquitetura dever�
 **PRINCIPAL OBJETIVO DO PROJETO:**
 
 Criar um jogo de dragões com combate divertido, progressão consistente, sistema de resgate e construção de ninho, evolução visual e técnica e carregamento inteligente de conteúdo, preparado para crescer sem comprometer o desempenho.
+
+## Implementação v0.4 · protótipo de exploração
+
+A fase 02 serve como teste de uma travessia horizontal ampliada: 110 segundos, escolha entre ponte central, ruínas superiores e desfiladeiro âmbar; entrada secreta destrutível para a Câmara dos Ecos; recompensas únicas e coleção no ninho. As rotas alteram encontros e cenografia, preservando o espaço de movimento do shoot ’em up. O restante da campanha mantém o formato anterior. Detalhes e limites da entrega estão em CHECKPOINT.md.
+
+
+## Implementação v0.5 · ninho e companheiros
+
+O ninho recebeu cinco estágios visuais, filhotes na maquete e fichas das seis espécies. Dois companheiros podem ser equipados a partir do ninho nível 3, com efeitos combinados e equipe preservada no checkpoint. A versão completa original deste GDD está também na pasta principal. Treinamento, alimentação, crescimento individual e árvore completa de habilidades continuam planejados; veja CHECKPOINT.md para o estado implementado.
+
+
+## Implementação v0.6 · campo de treinamento
+
+O ninho nível 3 agora permite praticar o combate compartilhado da campanha em três exercícios: alvos fixos, mira em movimento e esquiva. A sessão é temporária, com estatísticas, recarga e poderes liberados apenas para teste. Não há ganho de recursos ou substituição do checkpoint. A árvore completa de defesa, energia e recuperação permanece como próximo marco. Consulte CHECKPOINT.md para testes, limites e detalhes do que está implementado.

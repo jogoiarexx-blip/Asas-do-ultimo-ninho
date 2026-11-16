@@ -1,19 +1,24 @@
 "use strict";
 const SAVEKEY = "ultimoNinho.save.v1", BACKUP = SAVEKEY + ".backup";
-const freshSave = () => ({ v: 1, medals: {}, scales: 0, embers: 0, cores: 0, eggs: {}, babies: {}, companion: null, up: { atk: 0, hp: 0, speed: 0 }, nest: 1, cp: null, last: null, audio: false, difficulty: "Normal", raids: 0 });
+const freshSave = () => ({ v: 1, medals: {}, scales: 0, embers: 0, cores: 0, eggs: {}, babies: {}, companion: null, up: { atk: 0, hp: 0, speed: 0 }, nest: 1, cp: null, last: null, audio: false, difficulty: "Normal", raids: 0, exploration: { rewards: {}, routes: {} } });
 function usable(s) {
   return s?.v === 1 && s.up && s.medals && s.eggs && s.babies && Number.isInteger(s.nest) && (!s.cp || s.cp.id >= 1 && s.cp.id <= 24 && s.cp.run?.p && Array.isArray(s.cp.run.entities) && Array.isArray(s.cp.run.bullets));
 }
 function loadSave() {
   for (const key of [SAVEKEY, BACKUP]) try {
     let s = JSON.parse(localStorage.getItem(key));
-    if (usable(s)) return { ...freshSave(), ...s };
+    if (usable(s)) {
+      const loaded = { ...freshSave(), ...s };
+      normalizeCompanions(loaded);
+      return loaded;
+    }
   } catch {
   }
   return freshSave();
 }
 let save = loadSave(), savedOK = true;
 function writeSave() {
+  normalizeCompanions(save);
   try {
     const old = localStorage.getItem(SAVEKEY);
     if (old && usable(JSON.parse(old))) localStorage.setItem(BACKUP, old);
@@ -37,6 +42,26 @@ function cardCount(obj) {
   return Object.keys(obj).length;
 }
 const species = ["Rubro", "Verde", "Cristalino", "Glacial", "Tempestade", "Sombrio"];
+function companionSlots(s = save) { return s.nest >= 3 ? 2 : s.nest >= 2 ? 1 : 0; }
+function normalizeCompanions(s) {
+  const previous = Array.isArray(s.companions) ? s.companions : s.companion ? [s.companion] : [];
+  const owned = new Set(Object.values(s.babies));
+  s.companions = [...new Set(previous)].filter(name => Object.hasOwn(DRAGONS, name) && owned.has(name)).slice(0, companionSlots(s));
+  s.companion = s.companions[0] || null;
+  return s.companions;
+}
+function activeCompanions(s = save) {
+  return (Array.isArray(s.companions) ? s.companions : s.companion ? [s.companion] : []).slice(0, companionSlots(s));
+}
+function hasCompanion(name) { return activeCompanions().includes(name); }
+function changeCompanion(name) {
+  if (!Object.hasOwn(DRAGONS, name) || !Object.values(save.babies).includes(name)) return 'locked';
+  const team = normalizeCompanions(save);
+  const index = team.indexOf(name);
+  if (index >= 0) { team.splice(index, 1); save.companion = team[0] || null; return 'removed'; }
+  if (team.length >= companionSlots()) return 'full';
+  team.push(name); save.companion = team[0]; return 'added';
+}
 const cache = { current: null, next: null, epoch: 0 };
 async function readLevel(id) {
   if (location.protocol === "file:") return readLocalLevel(id);

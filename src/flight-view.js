@@ -2,7 +2,8 @@ import {AmbientLight,DirectionalLight,Group,OrthographicCamera,PerspectiveCamera
 import {SVGRenderer} from 'three/addons/renderers/SVGRenderer.js';
 import {dragonModel,animateDragon,objectModel} from './creatures.js';
 import {Landscape} from './landscape.js';
-import {Sculpture,disposeTree} from './mesh.js';
+import {disposeTree} from './mesh.js';
+import {buildNest} from './nest.js';
 
 function viewport(host){
   let backend,soft=false;
@@ -37,12 +38,13 @@ const family={Rubro:'rubro',Verde:'verde',Cristalino:'cristalino',Glacial:'glaci
 const creatures=new Set(['jogador','companheiro','filhote','boss','sentinela','bruto','arqueiro','batedor']);
 function modelFor(kind,region,save){
   let model,scale=1;
-  if(creatures.has(kind)){
-    const type={jogador:'rubro',companheiro:family[save.companion]||'verde',filhote:'verde',boss:elemental[region],sentinela:'bruto'}[kind]||kind;
+  const buddy=kind.startsWith('companheiro:');
+  if(creatures.has(kind)||buddy){
+    const type=buddy ? family[kind.split(':')[1]] || 'verde' : {jogador:'rubro',companheiro:family[save.companion]||'verde',filhote:'verde',boss:elemental[region],sentinela:'bruto'}[kind]||kind;
     model=dragonModel(type,kind==='boss'||(kind==='jogador'&&!!save.medals[4]));
     scale={jogador:save.medals[12]?1:.79,companheiro:.37,filhote:.45,boss:1.77,sentinela:.88,bruto:.63,arqueiro:.52,batedor:.46}[kind];
-    model.scale.setScalar(scale);
-    if(!['jogador','filhote','companheiro'].includes(kind))model.rotation.y=Math.PI;
+    model.scale.setScalar(buddy ? .32 : scale);
+    if(!buddy&&!['jogador','filhote','companheiro'].includes(kind))model.rotation.y=Math.PI;
   }else model=objectModel(kind);
   return model;
 }
@@ -52,7 +54,7 @@ export class FlightView{
     this.camera=new OrthographicCamera(-240,240,111,-111,.1,750);
     this.camera.position.set(240,111,310);this.camera.lookAt(240,111,0);
     this.actors=new Group();this.scene.add(this.actors);
-    this.active=new Map();this.templates=new Map();this.playerKey={};this.buddyKey={};this.lastFrame=-10;
+    this.active=new Map();this.templates=new Map();this.playerKey={};this.buddyKeys=[{},{}];this.lastFrame=-10;
   }
   reset(level){
     this.land?.dispose();this.clearActors();this.land=new Landscape(this.scene,level,this.view.soft);
@@ -63,7 +65,7 @@ export class FlightView{
   update(level,run,save,particles){
     const t=run.t;
     if(this.view.soft && t>=this.lastFrame && t-this.lastFrame<1/22)return;
-    this.lastFrame=t;this.land.update(t);
+    this.lastFrame=t;this.land.update(t,run.exploration);
     const visited=new Set();
     const place=(key,kind,x,y,z=0)=>{
       visited.add(key);let item=this.active.get(key);
@@ -78,13 +80,22 @@ export class FlightView{
     const slope=Math.max(-.3,Math.min(.3,((this.lastY??p.y)-p.y)*.075));this.lastY=p.y;
     this.bank=(this.bank||0)*.76+slope*.24;animateDragon(player,t,this.bank);
     player.visible=p.inv<=0||Math.floor(t*11)%4!==0||t<1;
-    if(save.companion){const b=place(this.buddyKey,'companheiro',p.x-21,p.y+8+Math.sin(t*3)*2,2);animateDragon(b,t+.5)}
+    const companions=run.companions||save.companions||(save.companion?[save.companion]:[]);
+    companions.slice(0,2).forEach((name,i)=>{
+      const b=place(this.buddyKeys[i],'companheiro:'+name,Math.max(8,p.x-23-i*13),Math.max(15,Math.min(208,p.y+(i?-13:13)+Math.sin(t*3+i)*2)),2);
+      animateDragon(b,t+.5+i);
+    });
     for(const e of run.entities){
-      if(e.dead)continue;const m=place(e,e.kind,e.kind==='raio'?240:e.x,e.y,1);
+      if(e.dead)continue;const m=place(e,e.kind==='rota'&&e.route==='lower'?'rotaBaixa':e.kind,e.kind==='raio'?240:e.x,e.y,1);
       if(creatures.has(e.kind))animateDragon(m,t+e.serial*.23);
       else if(e.kind==='ovo'){m.rotation.y=t*1.4;m.position.y+=Math.sin(t*3.3)*1.5}
       else if(e.kind==='jaula')m.rotation.y=.28+Math.sin(t)*.09;
       else if(e.kind==='barreira')m.rotation.y=t*.4;
+      else if(['rota','passagem','tesouro'].includes(e.kind)) {
+        const pulse=1+Math.sin(t*3)*.04;m.scale.setScalar(pulse);
+        if(e.route==='lower')m.rotation.z=Math.PI;
+        if(e.kind==='tesouro')m.rotation.y=Math.sin(t)*.25;
+      }
       else if(e.kind==='raio'){m.scale.y=e.age<1.8?.4:5;m.visible=e.age>=1.8||Math.floor(t*10)%3!==0}
       if(['boss','sentinela','bruto','arqueiro'].includes(e.kind)&&e.cool<.48&&e.x<450){
         const aim=place('aviso:'+e.serial,'poder',e.x-(e.kind==='boss'?26:10),e.y-2,5);aim.scale.setScalar(.45+Math.max(0,.48-e.cool)*1.2);
@@ -98,22 +109,23 @@ export class FlightView{
   }
 }
 export function nestView(host,save){
-  const screen=viewport(host),scene=lightScene(),group=new Group();scene.add(group);
-  const camera=new PerspectiveCamera(32,1,.1,420);camera.position.set(30,25,77);camera.lookAt(0,5,0);
-  const island=new Sculpture();island.rod([0,-9,0],[0,-3,0],10,22,'#735566',9);island.rod([0,-3,0],[0,-1,0],22,21,'#88926e',9);
-  for(let k=0;k<14;k++){
-    const a=k*Math.PI/7,b=(k+1.6)*Math.PI/7;island.rod([Math.cos(a)*17,-.2,Math.sin(a)*12],[Math.cos(b)*17,1.1,Math.sin(b)*12],.9,1.25,k%2?'#a97e56':'#ca9f6f',5);
-  }
-  group.add(island.mesh());const hero=dragonModel('rubro',!!save.medals[4]);hero.scale.setScalar(.65);hero.position.set(2,6,0);group.add(hero);
-  const eggCount=Object.values(save.eggs).filter(e=>!e.hatched).length;
-  for(let i=0;i<Math.min(eggCount,4);i++){const egg=objectModel('ovo');egg.scale.setScalar(.33);egg.position.set(-12+i*3.2,1.6,8);group.add(egg)}
-  if(save.companion){const b=dragonModel(family[save.companion]||'verde');b.scale.setScalar(.25);b.position.set(10,2,9);group.add(b)}
+  const screen=viewport(host),scene=lightScene(),nest=buildNest(save,screen.soft),{group,hero,residents}=nest;scene.add(group);
+  const camera=new PerspectiveCamera(36,1,.1,420);camera.position.set(36,30,76);camera.lookAt(0,5,0);
   let yaw=-.44,drag=null,frame=0,prev=-1;
   host.onpointerdown=e=>{drag=[e.clientX,yaw];host.setPointerCapture(e.pointerId)};
   host.onpointermove=e=>{if(drag)yaw=drag[1]+(e.clientX-drag[0])*.012};
   host.onpointerup=host.onpointercancel=()=>drag=null;
   host.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){yaw+=e.key==='ArrowLeft'?-.2:.2;e.preventDefault()}};
-  function render(now){frame=requestAnimationFrame(render);if(now-prev<(screen.soft?100:40))return;prev=now;group.rotation.y=yaw;animateDragon(hero,now/1400,.03);screen.render(scene,camera)}
+  function render(now){
+    frame=requestAnimationFrame(render);if(now-prev<(screen.soft?100:40))return;prev=now;
+    group.rotation.y=yaw;animateDragon(hero,now/1400,.03);
+    for(const {model,home,phase} of residents){
+      const t=now/1800+phase;
+      model.position.set(home[0]+Math.sin(t)*1.1,home[1]+Math.sin(t*2)*.2,home[2]+Math.cos(t)*.7);
+      animateDragon(model,t,.02);
+    }
+    screen.render(scene,camera);
+  }
   frame=requestAnimationFrame(render);
   return ()=>{cancelAnimationFrame(frame);disposeTree(group);screen.dispose();host.onpointerdown=host.onpointermove=host.onpointerup=host.onpointercancel=host.onkeydown=null};
 }

@@ -4,11 +4,68 @@ const game = document.querySelector("#game");
 let flightView;
 let mode = "menu", level = null, run = null, raf = 0, stamp = 0, particles = [], lastHUD = "", lastPhase = "", requestId = 0;
 const bound = (v, a, b) => Math.min(b, Math.max(a, v));
-const health = () => (save.difficulty === "Fácil" ? 8 : save.difficulty === "Difícil" ? 3 : 5) + save.up.hp * 2 + (save.companion === "Cristalino" ? 2 : 0);
+const isTraining = () => !!level?.training;
+const health = (team = activeCompanions()) => (save.difficulty === "Fácil" ? 8 : save.difficulty === "Difícil" ? 3 : 5) + save.up.hp * 2 + (team.includes('Cristalino') ? 2 : 0);
+function flightTeam() { return run?.companions || activeCompanions(); }
+function hasFlightCompanion(name) { return flightTeam().includes(name); }
 function freshRun() {
-  return { t: 0, event: 0, p: { x: 85, y: 111, hp: health(), inv: 1, dash: 0, cool: 0, fire: 0, energy: 100, fury: 0, power: 0 }, entities: [], bullets: [], shots: [], kills: 0, hits: 0, loot: 0, bossSent: false, wonBoss: false, eggs: [], babies: [], beat: -1, ancient: !!save.medals[24] };
+  return { companions: [...activeCompanions()], t: 0, event: 0, p: { x: 85, y: 111, hp: health(), inv: 1, dash: 0, cool: 0, fire: 0, energy: 100, fury: 0, power: 0 }, entities: [], bullets: [], shots: [], kills: 0, hits: 0, loot: 0, bossSent: false, wonBoss: false, eggs: [], babies: [], beat: -1, ancient: !!save.medals[24] };
+}
+// Optional, serializable state: old checkpoints acquire exploration without a reset.
+function explorationState() {
+  if (!level.exploration) return null;
+  return run.exploration ??= { route: null, path: null, gatesSent: false, secretSent: false, rewards: [], bonus: 0, notice: '', noticeUntil: 0 };
+}
+function explorationNotice(text) {
+  const x = explorationState();
+  x.notice = text; x.noticeUntil = run.t + 4;
+}
+function chooseRoute(route) {
+  const x = explorationState();
+  if (!x || x.route === route) return;
+  x.route = route;
+  if (route !== 'secret') x.path = route;
+  for (const e of run.entities) if (e.kind === 'rota' || e.kind === 'passagem' || e.kind === 'selo') e.dead = true;
+  explorationNotice(route === 'secret' ? 'Passagem descoberta · Câmara dos Ecos!' : 'Caminho escolhido · ' + level.exploration.names[route]);
+  chime(); checkpoint();
+}
+function explorationTick() {
+  const x = explorationState();
+  if (!x) return;
+  const { choice, secret } = level.exploration;
+  if (!x.gatesSent && run.t >= choice.opens) {
+    x.gatesSent = true;
+    if (run.t < choice.closes && !x.route) {
+      for (const [route, y] of [['upper', choice.upperY], ['lower', choice.lowerY]]) {
+        run.entities.push({ ...entity('rota', y, 'route-' + route), x: choice.x, route, expires: choice.closes });
+      }
+    }
+  }
+  if (!x.route && run.t >= choice.closes) chooseRoute('main');
+  if (!x.secretSent && run.t >= secret.opens) {
+    x.secretSent = true;
+    if (run.t < secret.closes) run.entities.push({ ...entity('selo', secret.y, 'secret-seal'), x: secret.x, expires: secret.closes });
+  }
+}
+function collectTreasure(e) {
+  if (isTraining()) return;
+  const x = explorationState(), reward = level.exploration.rewards[e.reward];
+  if (!x || !reward) return;
+  save.exploration ??= { rewards: {}, routes: {} };
+  const id = level.id + '-' + e.reward;
+  const first = !save.exploration.rewards[id];
+  if (first) {
+    save.exploration.rewards[id] = true;
+    save.scales += reward.scales;
+    x.bonus += reward.scales;
+  }
+  if (!x.rewards.includes(e.reward)) x.rewards.push(e.reward);
+  e.dead = true;
+  explorationNotice(first ? reward.name + ' · +' + reward.scales + ' escamas guardadas no ninho!' : reward.name + ' · Já registrada na coleção.');
+  burst(e.x, e.y, '#9ef5d4', 22); chime(); checkpoint();
 }
 function checkpoint() {
+  if (isTraining()) return;
   if (!run || !level || !["flight", "paused"].includes(mode)) return;
   save.cp = { id: level.id, run: JSON.parse(JSON.stringify(run)) };
   save.last = { id: level.id, t: Math.floor(run.t), type: "voo" };
@@ -24,12 +81,14 @@ function setHud() {
       '<div class="meter-track"><i style="width:' + amount + '%"></i></div></div>';
   };
   const realm = level.realm || REALMS[Math.floor((level.id - 1) / 4)];
-  const phase = '<span class="phase-kicker">FASE ' + String(level.id).padStart(2, '0') + ' <i>·</i> ' + realm + '</span><strong>' + level.name + '</strong>';
-  const meters = meter('health', 'VIDA', '♥', p.hp, health()) +
+  const team = flightTeam();
+  const phase = '<span class="phase-kicker">' + (isTraining() ? 'TREINO' : 'FASE ' + String(level.id).padStart(2, '0')) + ' <i>·</i> ' + realm + '</span><strong>' + level.name + '</strong>' + (team.length ? '<small class="team-hud">' + team.join(' + ') + '</small>' : '');
+  document.querySelector('#hud').classList.toggle('practice', isTraining());
+  const meters = meter('health', 'VIDA', '♥', p.hp, health(flightTeam())) +
     meter('energy', 'ENERGIA', 'ϟ', Math.floor(p.energy), 100) +
     meter('fury', 'FÚRIA', '✦', Math.round(p.fury), 100) +
-    meter('eggs', 'OVOS', '◈', run.eggs.length, level.eggs) +
-    (level.babies ? meter('babies', 'FILHOTES', '♧', run.babies.length, level.babies) : '');
+    (isTraining() ? '' : meter('eggs', 'OVOS', '◈', run.eggs.length, level.eggs) +
+    (level.babies ? meter('babies', 'FILHOTES', '♧', run.babies.length, level.babies) : ''));
   if (phase !== lastPhase) {
     document.querySelector('#hudPhase').innerHTML = phase;
     lastPhase = phase;
@@ -46,13 +105,14 @@ function burst(x, y, col, n = 12) {
   }
 }
 function entity(kind, y, index) {
-  const hp = { ovo: 1, jaula: 2, filhote: 1, barreira: 7, batedor: 1, arqueiro: 2, bruto: 4, sentinela: 7, boss: level.id === 4 ? 34 : 20 + level.region * 6, raio: 1 }[kind];
+  const hp = { alvo: 30, rota: 1, passagem: 1, tesouro: 1, selo: 8, ovo: 1, jaula: 2, filhote: 1, barreira: 7, batedor: 1, arqueiro: 2, bruto: 4, sentinela: 7, boss: level.id === 4 ? 34 : 20 + level.region * 6, raio: 1 }[kind];
   return { kind, y, base: y, x: kind === "raio" ? 0 : 503, age: 0, hp: hp + (run.ancient && ["boss", "arqueiro", "bruto"].includes(kind) ? 2 : 0), max: hp + (run.ancient && ["boss", "arqueiro", "bruto"].includes(kind) ? 2 : 0), cool: 2.1, serial: index, wave: 0 };
 }
 function hostile(e) {
-  return ["batedor", "arqueiro", "bruto", "sentinela", "boss"].includes(e.kind);
+  return ["alvo", "batedor", "arqueiro", "bruto", "sentinela", "boss"].includes(e.kind);
 }
 function awardItem(e) {
+  if (isTraining()) return;
   const id = level.id + "-" + e.serial, s = species[level.region];
   if (e.kind === "ovo") {
     if (!run.eggs.includes(id)) run.eggs.push(id);
@@ -70,7 +130,7 @@ function awardItem(e) {
 function hurt() {
   const p = run.p;
   if (p.inv > 0 || p.dash > 0) return;
-  p.hp--;
+  p.hp = isTraining() ? Math.max(1, p.hp - 1) : p.hp - 1;
   p.inv = 1.5;
   run.hits++;
   p.fury = Math.min(100, p.fury + 13);
@@ -79,11 +139,24 @@ function hurt() {
   if (p.hp <= 0) endFlight(false);
 }
 function strike(e, dmg) {
-  if (e.dead || e.kind === "filhote" || e.kind === "ovo" || e.kind === "raio") return;
+  if (e.dead || ['filhote', 'ovo', 'raio', 'rota', 'passagem', 'tesouro'].includes(e.kind)) return;
   const dealt = e.kind === 'boss' && level.id === 4 && e.state === 'recover' ? dmg * 1.4 : dmg;
+  if (isTraining()) {
+    run.training.damage += Math.min(Math.max(0, e.hp), dealt);
+    run.training.damageStarted ??= run.t;
+  }
   e.hp -= dealt;
   burst(e.x - 3, e.y, "#ffd39a", 3);
   if (e.hp > 0) return;
+  if (e.kind === 'selo') {
+    e.kind = 'passagem'; e.hp = 1;
+    explorationNotice('Selo rompido · Encoste no arco verde antes que a passagem se feche.');
+    burst(e.x, e.y, '#9ef5d4', 25); checkpoint(); return;
+  }
+  if (isTraining() && e.kind === 'alvo') {
+    e.dead = true; run.kills++; run.training.respawn[e.slot] = run.t + 1;
+    burst(e.x, e.y, '#bce8ce', 14); return;
+  }
   if (e.kind === "jaula") {
     e.kind = "filhote";
     e.hp = 1;
@@ -219,13 +292,15 @@ function update(dt) {
   }
   p.x = bound(p.x + dx / l * dt * speed, 18, 461);
   p.y = bound(p.y + dy / l * dt * speed + (level.id === 13 ? Math.sin(run.t * 1.3) * dt * 12 : 0), 22, 208);
+  explorationTick();
+  if (isTraining()) trainingTick();
   if (keys.has("Space") && !p.fire) {
     p.fire = 0.22;
-    run.shots.push({ x: p.x + 13, y: p.y, v: 244, vy: 0, d: 1 + save.up.atk + (save.companion === "Rubro" ? 1 : 0) });
+    run.shots.push({ x: p.x + 13, y: p.y, v: 244, vy: 0, d: 1 + save.up.atk + (hasFlightCompanion('Rubro') ? 1 : 0) });
     if (save.up.atk >= 3) run.shots.push({ x: p.x + 10, y: p.y - 4, v: 240, vy: -9, d: 1 + save.up.atk });
     note(290, 0.065, "triangle", 0.026, 0, 108);
   }
-  if (keys.has("KeyE") && save.medals[4] && p.energy >= 28 && !p.power) {
+  if (keys.has("KeyE") && (save.medals[4] || isTraining()) && p.energy >= 28 && !p.power) {
     p.energy -= 28;
     p.power = 0.7;
     for (let i = -1; i < 2; i++) run.shots.push({ x: p.x + 14, y: p.y, v: 210, vy: i * 35, d: 4 + save.up.atk, special: true });
@@ -241,14 +316,15 @@ function update(dt) {
   let beat = Math.floor(run.t / 5);
   if (beat !== run.beat) {
     run.beat = beat;
-    if (beat && save.companion === "Verde" && beat % 3 === 0) p.hp = Math.min(health(), p.hp + 1);
-    if (beat && ["Tempestade", "Sombrio"].includes(save.companion)) {
-      for (const e of run.entities.filter(hostile).slice(0, 2)) strike(e, save.companion === "Sombrio" ? 3 : 2);
+    if (beat && hasFlightCompanion('Verde') && beat % 3 === 0) p.hp = Math.min(health(flightTeam()), p.hp + 1);
+    if (beat) for (const name of flightTeam()) if (['Tempestade', 'Sombrio'].includes(name)) {
+      for (const e of run.entities.filter(e => !e.dead && hostile(e)).slice(0, 2)) strike(e, name === 'Sombrio' ? 3 : 2);
     }
   }
   while (run.event < level.events.length && level.events[run.event][0] <= run.t) {
-    let idx = run.event, [, k, y] = level.events[run.event++];
-    run.entities.push(entity(k, y, idx));
+    let idx = run.event, [, k, y, route, reward] = level.events[run.event++];
+    if (route && explorationState()?.route !== route) continue;
+    run.entities.push({ ...entity(k, y, idx), reward });
   }
   if (level.boss && !run.bossSent && run.t >= level.duration) {
     run.bossSent = true;
@@ -258,13 +334,25 @@ function update(dt) {
     if (e.dead) continue;
     e.age += dt;
     let kind = e.kind;
+    if (['rota', 'selo', 'passagem'].includes(kind)) {
+      if (run.t >= e.expires) { e.dead = true; continue; }
+      if (Math.abs(e.x - p.x) < 23 && Math.abs(e.y - p.y) < 18) {
+        if (kind === 'rota') chooseRoute(e.route);
+        if (kind === 'passagem') chooseRoute('secret');
+      }
+      continue;
+    }
+    if (kind === 'alvo') {
+      e.y = run.training.drill === 'moving' ? 113 + Math.sin(run.t * 1.35 * (hasFlightCompanion('Glacial') ? .79 : 1)) * 64 : e.base;
+      continue;
+    }
     if (kind === "boss") bossAct(e, dt);
     else if (kind === "raio") {
       if (e.age > 2.2) e.dead = true;
       else if (e.age >= 1.8 && Math.abs(e.y - p.y) < 8) hurt();
     } else {
       let v = hostile(e) ? (kind === "bruto" ? 34 : kind === "sentinela" ? 20 : 46) + level.region * 2 : kind === "filhote" ? 26 : 38;
-      if (save.companion === "Glacial" && hostile(e)) v *= 0.79;
+      if (hasFlightCompanion('Glacial') && hostile(e)) v *= 0.79;
       e.x -= dt * v;
       if (hostile(e)) {
         e.y = bound(e.base + Math.sin(e.age * (kind === "batedor" ? 2 : 1.1)) * 14, 21, 204);
@@ -279,7 +367,8 @@ function update(dt) {
     if (kind === "raio") continue;
     let big = kind === "boss", distX = Math.abs(e.x - p.x), distY = Math.abs(e.y - p.y);
     if (distX < (big ? 29 : kind === "ovo" || kind === "filhote" ? 20 : 12) && distY < (big ? 17 : kind === "barreira" ? 20 : 13)) {
-      if (kind === "ovo" || kind === "filhote") awardItem(e);
+      if (kind === 'tesouro') collectTreasure(e);
+      else if (kind === "ovo" || kind === "filhote") awardItem(e);
       else hurt();
     }
     if (mode !== "flight") return;
@@ -289,7 +378,7 @@ function update(dt) {
     s.x += s.v * dt;
     s.y += s.vy * dt;
     for (const e of run.entities) {
-      if (e.dead || ["raio", "ovo", "filhote"].includes(e.kind)) continue;
+      if (e.dead || ["raio", "ovo", "filhote", "rota", "passagem", "tesouro"].includes(e.kind)) continue;
       if (Math.abs(e.x - s.x) < (e.kind === "boss" ? 31 : 12) && Math.abs(e.y - s.y) < (e.kind === "boss" ? 19 : e.kind === "barreira" ? 23 : 9)) {
         strike(e, s.d);
         s.dead = true;
@@ -302,6 +391,9 @@ function update(dt) {
     b.y += b.vy * dt;
     if (Math.hypot(b.x - p.x, b.y - p.y) < 7) {
       b.dead = true;
+      if (isTraining() && b.training && p.dash > 0) {
+        run.training.dodges++; run.training.note = 'Esquiva bem cronometrada!'; run.training.noteUntil = run.t + 2;
+      }
       hurt();
       if (mode !== "flight") return;
     }
@@ -309,13 +401,28 @@ function update(dt) {
   run.shots = run.shots.filter((s) => !s.dead && s.x < 490);
   run.entities = run.entities.filter((e) => !e.dead);
   run.bullets = run.bullets.filter((b) => !b.dead && b.x > 0 && b.x < 490 && b.y > 0 && b.y < 224);
-  if (level.boss ? run.wonBoss : run.t > level.duration + 5) {
+  if (!isTraining() && (level.boss ? run.wonBoss : run.t > level.duration + 5)) {
     endFlight(true);
     return;
   }
   if (Math.floor((run.t - dt) / 8) !== Math.floor(run.t / 8)) checkpoint();
 }
 function missionTip() {
+  if (isTraining()) return trainingTip();
+  if (level.exploration) {
+    const x = explorationState(), { choice, secret } = level.exploration;
+    if (run.t < x.noticeUntil) return x.notice;
+    if (run.t >= choice.opens - 5 && run.t < choice.opens) return 'A ponte se divide adiante · Prepare-se para escolher uma rota.';
+    if (!x.route && run.t >= choice.opens && run.t < choice.closes) return 'Toque num arco: AZUL acima = ruínas · ÂMBAR abaixo = desfiladeiro · Centro = ponte.';
+    const entrance = run.entities.find(e => !e.dead && ['selo', 'passagem'].includes(e.kind));
+    if (entrance?.kind === 'selo') return 'Selo rachado · Atire pela esquerda e atravesse o arco verde. ' + Math.ceil(secret.closes - run.t) + ' s';
+    if (entrance?.kind === 'passagem') return 'Entrada aberta · Encoste no arco verde para entrar na Câmara dos Ecos!';
+    if (run.t >= secret.opens - 5 && run.t < secret.opens) return 'Marcas antigas na rocha · Há uma entrada escondida adiante.';
+    if (run.t >= 90) return 'Travessia final · As rotas se encontram. Resgate o ovo e liberte a última jaula.';
+    if (x.route === 'secret') return 'Câmara dos Ecos · Procure a relíquia verde e desvie dos guardiões.';
+    if (x.route === 'upper') return 'Ruínas superiores · Arqueiros guardam o tesouro azul.';
+    if (x.route === 'lower') return 'Desfiladeiro âmbar · Brutos protegem o tesouro dourado.';
+  }
   if (level.id === 4) {
     const boss = run.entities.find(e => e.kind === "boss" && !e.dead);
     if (boss?.state === "warning") {
@@ -362,7 +469,25 @@ function draw() {
   }
   const progress=document.querySelector('#routeProgress');
   progress.value=boss ? Math.round(100*boss.hp/boss.max) : Math.min(100,Math.round(100*run.t/(level.duration+(level.boss?0:5))));
-  document.querySelector('#routeName').textContent=boss ? (level.id===24?'Senhor do Eclipse':level.id===4?'Guardião das Cinzas · Etapa '+(boss.phase+1):level.name) : 'Percurso · '+progress.value+'%';
+  const exp = explorationState();
+  document.querySelector('#routeName').textContent=boss ? (level.id===24?'Senhor do Eclipse':level.id===4?'Guardião das Cinzas · Etapa '+(boss.phase+1):level.name) : (exp ? (run.t >= 90 ? 'Travessia final' : level.exploration.names[exp.route] || 'Ponte dos Esquecidos') : 'Percurso') + ' · '+progress.value+'%';
+  drawExploration();
+  drawTraining();
+}
+function drawExploration() {
+  const host = document.querySelector('#explorationMarkers');
+  if (!host) return;
+  if (!level.exploration) { host.hidden = true; return; }
+  host.hidden = false;
+  const aspect = game.clientHeight ? game.clientWidth / game.clientHeight : 480 / 222;
+  const width = Math.max(480, 222 * aspect), height = Math.max(222, 480 / aspect);
+  // Labels share the orthographic camera's projection on desktop and mobile.
+  const markup = run.entities.filter(e => !e.dead && ['rota', 'selo', 'passagem', 'tesouro'].includes(e.kind)).map(e => {
+    const text = e.kind === 'rota' ? level.exploration.names[e.route] : e.kind === 'selo' ? 'SELO · ' + Math.ceil(e.hp) + '/8' : e.kind === 'passagem' ? 'ENTRAR · CÂMARA DOS ECOS' : level.exploration.rewards[e.reward].name;
+    const labelY = e.y + (game.clientWidth < 620 && e.y < 100 ? 35 : -21);
+    return '<span class="explore-marker ' + (e.route || e.kind) + '" style="left:' + (50 + (e.x - 240) / width * 100) + '%;top:' + (50 + (labelY - 111) / height * 100) + '%">' + text + '</span>';
+  }).join('');
+  if (host.innerHTML !== markup) host.innerHTML = markup;
 }
 function loop(now) {
   if (mode !== "flight") return;

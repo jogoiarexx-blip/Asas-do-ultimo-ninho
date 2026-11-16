@@ -1,8 +1,8 @@
-ASAS DO ÚLTIMO NINHO · v0.3.0 — Three.js
+ASAS DO ÚLTIMO NINHO · v0.6.0 — ASAS EM TREINAMENTO
 
+COMO JOGAR
 Extraia o ZIP inteiro e abra JOGAR.html no navegador.
-O jogo usa teclado no PC e também possui botões para telas sensíveis ao toque.
-A interface de voo traz HUD ampliado, identificação da fase e indicadores com barras visuais. A fase 04 recebeu o Guardião das Cinzas com três padrões de ataque sinalizados e janela de recuperação. No Ninho, ovos prontos agora passam por uma sequência animada de eclosão.
+Não é necessário instalar dependências para jogar: Three.js e as fases estão incluídos.
 
 Mover: setas ou WASD
 Sopro de fogo: segure Espaço
@@ -10,18 +10,82 @@ Esquiva: Shift
 Fúria: F com a barra carregada
 Poder elemental: E após concluir a fase 04
 Pausar e salvar: P ou Esc
+Também há botões para telas sensíveis ao toque.
 
-Encoste nos ovos. Para salvar um filhote, destrua a jaula com o sopro e depois encoste nele.
-No ninho, use as escamas para construir a incubadora e melhorar o dragão.
-Abra novamente pelo mesmo arquivo e navegador para continuar sua partida.
+NOVIDADES DA V0.6 — CAMPO DE TREINAMENTO
+No ninho nível 3, use Entrar no campo. Escolha entre:
+- Alvos fixos: pratique a altura do sopro contra três alvos.
+- Mira em movimento: acompanhe um alvo que sobe e desce.
+- Esquiva: uma faixa sinaliza a rajada antes do disparo. Cruze os projéteis com Shift.
 
-Na fase 04, observe o sinal luminoso: a faixa horizontal anuncia a rajada linear; as linhas em leque anunciam o ataque direcionado; o anel anuncia a explosão de brasas. O Guardião fica vulnerável por um breve período depois de cada investida.
+O campo usa sua dupla e suas melhorias. O poder E está disponível dentro do treino,
+mesmo antes de ser liberado na campanha. A vida de treino nunca chega a zero.
+Recarregar poderes restaura vida, energia, fúria e recarga da esquiva sem zerar números.
+Zerar exercício ou escolher outro modo reinicia as estatísticas.
+P ou Esc pausa; Voltar ao ninho encerra a sessão.
 
-No Ninho, use “Chocar ovos” e avance após a animação para registrar cada novo filhote no berçário.
+O painel mostra dano, dano por segundo, alvos destruídos, impactos e esquivas.
+Os números incluem as habilidades dos companheiros. Não há recompensa de treino:
+recursos, medalhas, incubação e checkpoint da campanha ficam preservados.
+Depois, use Continuar voo para retomar a campanha no ponto salvo.
 
-Para continuar o desenvolvimento, leia CHECKPOINT.md. O design original está em docs/GDD.md.
-A cena 3D está em src e o jogo pronto para execução está em dist.
-A biblioteca Three.js está incluída no ZIP. Para recompilar após editar a cena, use npm install e npm run build.
-No ninho, arraste o dragão para girar a maquete ou use as setas com a maquete selecionada. Em HTTP, a campanha lê os arquivos JSON de levels.
-No modo offline, usa os pacotes equivalentes de levels-local. Após editar uma fase, rode python tools/preparar_offline.py para regenerar esses pacotes.
-Para testar em um servidor local, execute python -m http.server 8000 --directory dist e abra http://localhost:8000.
+CONTEÚDO DA V0.5 PRESERVADO
+O ninho possui cinco estágios visuais. Novas construções aparecem conforme você
+constrói os níveis: incubadora/berçário, oficina/poleiro duplo, santuário e torres.
+Os filhotes resgatados aparecem na maquete, que pode ser girada por arraste ou setas.
+
+No berçário, consulte as fichas e equipe os companheiros do próximo voo.
+- Ninho nível 2: primeiro companheiro.
+- Ninho nível 3: segundo companheiro.
+- Use Retirar para trocar uma espécie quando a equipe estiver completa.
+- Os efeitos das duas espécies funcionam juntos. Uma espécie ocupa somente um espaço.
+- A equipe de um voo já iniciado permanece no checkpoint. As trocas no berçário
+  passam a valer ao iniciar outro voo; retomar o checkpoint mantém a dupla anterior.
+
+Rubro: +1 no sopro principal. Verde: recupera 1 vida a cada 15 segundos.
+Cristalino: +2 de vida máxima. Glacial: desacelera inimigos comuns em 21%.
+Tempestade: atinge até 2 inimigos por 2 de dano a cada 5 segundos.
+Sombrio: atinge até 2 inimigos por 3 de dano a cada 5 segundos.
+
+O GDD completo está em GDD_Asas_do_Ultimo_Ninho.md, na pasta principal.
+
+CONTEÚDO DA V0.4 PRESERVADO
+A fase 02, Ponte dos Esquecidos, agora dura aproximadamente 110 segundos.
+Depois do trecho inicial, escolha uma rota encostando num dos arcos:
+- Arco azul, acima: Ruínas superiores, com arqueiros e um tesouro de 8 escamas.
+- Arco âmbar, abaixo: Desfiladeiro âmbar, com brutos e um tesouro de 8 escamas.
+- Sem entrar nos arcos: continue pela Ponte central.
+Os arcos aparecem aos 33 segundos e fecham aos 43 segundos.
+
+PASSAGEM SECRETA
+Entre os segundos 63 e 76, surge um selo rachado no centro do campo de voo.
+Posicione-se à esquerda e acerte oito disparos básicos (ou menos com melhorias).
+Depois de romper o selo, encoste no arco verde antes que ele se feche.
+A Câmara dos Ecos tem encontros próprios, cristais e a Relíquia dos Ecos (20 escamas).
+O tesouro surge mais adiante: continue voando e encoste nele para recolher.
+Todas as rotas se reencontram na travessia final, com mais um ovo e uma jaula.
+
+COLEÇÃO E SALVAMENTO
+Tesouros de exploração concedem escamas somente na primeira coleta.
+As escamas são guardadas imediatamente, mesmo que o voo seja interrompido.
+O ninho mostra os três tesouros e os caminhos concluídos. Rejogue a fase pelo mapa
+para conhecer o outro caminho. Rotas só são marcadas como concluídas ao vencer a fase.
+O checkpoint preserva rota, selo aberto e tesouros encontrados.
+A chave de salvamento das versões anteriores foi mantida e checkpoints antigos são aceitos.
+Para reutilizar um salvamento local, mantenha o mesmo navegador e endereço/caminho
+do jogo. Substitua os arquivos na pasta usada anteriormente; mudar de pasta ou de
+origem do servidor pode separar o armazenamento do navegador.
+
+RESGATES E NINHO
+Encoste nos ovos. Para resgatar um filhote, destrua a jaula e depois encoste nele.
+Use escamas no ninho para construir a incubadora e melhorar o dragão.
+Chocar ovos abre a animação de eclosão, com confirmação individual dos filhotes.
+O Guardião das Cinzas da fase 04 mantém os três padrões e sinais de ataque.
+
+DESENVOLVIMENTO
+Leia CHECKPOINT.md e docs/GDD.md. Código da cena em src; jogo pronto em dist.
+Para recompilar: npm ci e npm run build. Para verificar: npm test.
+Para regenerar os retratos das espécies: npm run portraits.
+Após editar uma fase, rode python tools/preparar_offline.py.
+Servidor opcional: python -m http.server 8000 --directory dist
+Abra http://localhost:8000. O carregamento mantém apenas a fase atual e a próxima.

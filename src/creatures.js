@@ -49,6 +49,41 @@ export function animateDragon(g,t,tilt=0){
 }
 export function objectModel(kind){
   const a=new Sculpture();
+  if(kind==='alvo'){
+    // Concentric target circles face the camera, matching the combat hit box.
+    a.rod([0,-19,-2],[0,0,-2],1.2,1.2,'#a58b71',5);
+    a.box(0,-19,-2,15,2,7,'#c6ab86');
+    for(const [radius,color,z] of [[12,'#d6bb97',0],[9,'#af6781',.5],[6,'#efdba5',1],[3,'#7ebfaf',1.5]]){
+      for(let k=0;k<16;k++){
+        const u=k*Math.PI/8,v=(k+1)*Math.PI/8;
+        a.tri([0,0,z],[Math.cos(u)*radius,Math.sin(u)*radius,z],[Math.cos(v)*radius,Math.sin(v)*radius,z],color);
+      }
+    }
+    const g=new Group();g.add(a.mesh());return g;
+  }
+  if (['rota', 'rotaBaixa', 'selo', 'passagem'].includes(kind)) {
+    const color = kind === 'rotaBaixa' ? '#f1c17d' : kind === 'selo' ? '#95758b' : kind === 'passagem' ? '#8df1cb' : '#9ddaf3';
+    for (let k=0;k<12;k++) {
+      const u=k*Math.PI/6,v=(k+1)*Math.PI/6;
+      a.rod([Math.cos(u)*17,Math.sin(u)*20,0],[Math.cos(v)*17,Math.sin(v)*20,0],1.9,1.9,color,4);
+    }
+    if(kind === 'selo') {
+      a.rod([0,-16,0],[0,0,0],9,14,'#766077',7);
+      a.rod([0,0,0],[0,16,0],14,4,'#a08996',7);
+      for(const [x,y] of [[-3,-12],[2,-5],[-2,2],[3,10]])a.box(x,y,10,1.5,6,.8,'#b4f8d3');
+    } else {
+      a.rod([-7,0,1],[6,0,1],1.2,1.2,color,4);
+      a.rod([6,0,1],[0,6,1],1,0,color,4);
+      a.rod([6,0,1],[0,-6,1],1,0,color,4);
+    }
+    const g=new Group();g.add(a.mesh());return g;
+  }
+  if(kind === 'tesouro') {
+    a.box(0,-3,0,16,9,11,'#4d6973');a.box(0,2,0,18,3,12,'#f3cd83');
+    a.rod([0,5,0],[0,12,0],0,4,'#9af4d4',5);a.rod([0,12,0],[0,20,0],4,0,'#e5ffe4',5);
+    for(const x of [-6,6])a.box(x,-2,6,1.5,8,1,'#f3cd83');
+    const g=new Group();g.add(a.mesh());return g;
+  }
   if(kind==='ovo'){
     a.body([[-5,0,0,.4,.5],[-3.5,0,0,3.9,3.5],[0,0,0,5.3,4.7],[3.5,0,0,3.5,3.2],[6.8,0,0,.2,.2]],'#ffc35e',9);
     const m=a.mesh();m.rotation.z=Math.PI/2;const g=new Group();g.add(m);
