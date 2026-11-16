@@ -314,6 +314,92 @@ function bossAct(e, dt) {
   e.wave = (e.wave || 0) + 1;
   note(170 + e.phase * 32, .14, 'triangle', .036, 0, 370);
 }
+// v0.7.7 - deterministic, serializable enemy tactics, compatible with old checkpoints.
+// No timers outside the game loop and no per-enemy DOM operations.
+const ENEMY_TYPES = new Set(['batedor', 'arqueiro', 'bruto', 'sentinela']);
+function enemyTactic(e, dt) {
+  if (!ENEMY_TYPES.has(e.kind)) return;
+  const kind = e.kind, p = run.p, difficulty = encounterDifficulty();
+  const serial = Number.isFinite(+e.serial) ? Math.abs(+e.serial) : 0;
+  const wing = serial % 3 - 1;
+  // Restore checkpoints made before tactics were implemented without changing the save format.
+  const ai = e.ai ??= {
+    state: 'approach', think: 0, aimY: e.base, aimX: p.x, targetY: e.base,
+    dodge: 0, dodgeDir: 1, windup: 0, charge: 0, recover: 0
+  };
+  ai.think -= dt;
+  if (ai.think <= 0) {
+    ai.think = 0.17 + serial % 4 * 0.035; // stagger target acquisition across enemies
+    const offset = wing * (kind === 'sentinela' ? 21 : 28);
+    // Formation lanes follow the player with bounded tracking: no instantaneous teleport.
+    ai.targetY = bound(p.y * 0.65 + e.base * 0.35 + offset, 27, 197);
+    if (kind === 'batedor' && ai.dodge <= 0 && (run.shots || []).some(shot =>
+      shot.x < e.x && e.x - shot.x < 92 && Math.abs(shot.y - e.y) < 16)) {
+      ai.dodge = .44;
+      ai.dodgeDir = e.y >= p.y ? 1 : -1;
+    }
+  }
+  let speed = (kind === 'bruto' ? 34 : kind === 'sentinela' ? 20 : 46) + level.region * 2;
+  speed *= difficulty.movement;
+  if (hasFlightCompanion('Glacial')) speed *= .79;
+  let altitude = ai.targetY;
+  if (kind === 'batedor') {
+    ai.dodge = Math.max(0, ai.dodge - dt);
+    if (ai.dodge > 0) altitude = bound(altitude + ai.dodgeDir * 35, 23, 204);
+    // Scouts are fast at changing altitude and remain vulnerable to timing.
+    altitude += Math.sin(e.age * 2.4 + serial * .7) * 8;
+    e.y = bound(e.y + bound(altitude - e.y, -60 * dt, 60 * dt), 21, 204);
+  } else if (kind === 'bruto') {
+    if (ai.state === 'windup') {
+      ai.windup = Math.max(0, ai.windup - dt);
+      if (ai.windup === 0) { ai.state = 'charge'; ai.charge = .58; }
+    } else if (ai.state === 'charge') {
+      speed *= 2.5;
+      ai.charge = Math.max(0, ai.charge - dt);
+      if (ai.charge === 0) { ai.state = 'recover'; ai.recover = .55; e.cool = 2.8; }
+    } else if (ai.state === 'recover') {
+      ai.recover = Math.max(0, ai.recover - dt);
+      if (ai.recover === 0) ai.state = 'approach';
+    } else {
+      e.cool -= dt;
+      if (e.x < 402 && e.x > p.x + 65 && e.cool <= 0 && Math.abs(p.y - e.y) < 75) {
+        ai.state = 'windup'; ai.windup = save.difficulty === 'Fácil' ? .85 : save.difficulty === 'Difícil' ? .49 : .66;
+        ai.aimY = bound(p.y, 25, 200); ai.aimX = p.x;
+      }
+    }
+    if (ai.state === 'windup' || ai.state === 'charge') altitude = ai.aimY; // commit to the warned lane
+    e.y = bound(e.y + bound(altitude - e.y, -26 * dt, 26 * dt), 21, 204);
+  } else {
+    // Archers and sentinels hold lanes to give the player time to see their next attack.
+    const turn = kind === 'arqueiro' ? 29 : 21;
+    if (ai.state === 'windup') {
+      ai.windup = Math.max(0, ai.windup - dt);
+      if (ai.windup === 0) {
+        // Aim is locked at the start of the visual warning; a dodge can avoid it.
+        if (run.bullets.length < 100) {
+          enemyFireAt(e, ai.aimX, ai.aimY, kind === 'sentinela' ? 3 : 1,
+            kind === 'sentinela' ? .25 : .18, (58 + level.region * 4) * difficulty.shots);
+        }
+        ai.state = 'recover'; ai.recover = .28;
+        e.cool = kind === 'sentinela' ? difficulty.volleyCooldown + .5 : difficulty.volleyCooldown;
+      }
+    } else if (ai.state === 'recover') {
+      ai.recover = Math.max(0, ai.recover - dt);
+      if (ai.recover === 0) ai.state = 'approach';
+    } else {
+      e.cool -= dt;
+      if (e.x < 446 && e.cool <= 0) {
+        ai.state = 'windup';
+        ai.windup = save.difficulty === 'Fácil' ? .85 : save.difficulty === 'Difícil' ? .47 : .63;
+        ai.aimY = bound(p.y, 22, 202); ai.aimX = p.x;
+      }
+    }
+    if (ai.state === 'windup') altitude = ai.aimY;
+    e.y = bound(e.y + bound(altitude - e.y, -turn * dt, turn * dt), 21, 204);
+  }
+  // Enemy flight keeps advancing: no stationary, unkillable accumulation at the right edge.
+  e.x -= dt * speed;
+}
 function update(dt) {
   const p = run.p;
   run.t += dt;
@@ -403,16 +489,12 @@ function update(dt) {
       if (e.age > 2.2) e.dead = true;
       else if (e.age >= 1.8 && Math.abs(e.y - p.y) < 8) hurt();
     } else {
-      let v = hostile(e) ? ((kind === "bruto" ? 34 : kind === "sentinela" ? 20 : 46) + level.region * 2) * encounterDifficulty().movement : kind === "filhote" ? 26 : 38;
-      if (hasFlightCompanion('Glacial') && hostile(e)) v *= 0.79;
-      e.x -= dt * v;
-      if (hostile(e)) {
-        e.y = bound(e.base + Math.sin(e.age * (kind === "batedor" ? 2 : 1.1)) * 14, 21, 204);
-        e.cool -= dt;
-        if (kind !== "batedor" && e.x < 446 && e.cool < 0) {
-          enemyFire(e, kind === "sentinela" ? 3 : 1, 0.25, (58 + level.region * 4) * encounterDifficulty().shots);
-          e.cool = encounterDifficulty().volleyCooldown;
-        }
+      if (ENEMY_TYPES.has(kind)) {
+        enemyTactic(e, dt);
+      } else {
+        // Mission props, traps and prisoners retain their original trajectories.
+        const v = kind === 'filhote' ? 26 : 38;
+        e.x -= dt * v;
       }
     }
     if (mode !== "flight") return;
