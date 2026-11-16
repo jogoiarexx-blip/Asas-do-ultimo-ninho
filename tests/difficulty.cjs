@@ -23,9 +23,9 @@ const checks=[
 vm.runInNewContext(code+'\n'+checks,ctx);
 const render=fs.readFileSync(path.resolve(__dirname,'../src/flight-view.js'),'utf8');
 const built=fs.readFileSync(path.join(dist,'vendor/flight-view.js'),'utf8');
-assert.match(render,/model\\.scale\\.x\\s*\\*=\\s*-1/);
-assert.match(built,/n\\.scale\\.x\\*=-1/);
-assert.doesNotMatch(built,/n\\.rotation\\.y=Math\\.PI/);
+assert.match(render,/model\.scale\.x\s*\*=\s*-1/);
+assert.match(built,/n\.scale\.x\*=-1/);
+assert.doesNotMatch(built,/n\.rotation\.y=Math\.PI/);
 for(let id=1;id<=24;id++){
  const level=JSON.parse(fs.readFileSync(path.join(dist,'levels',String(id).padStart(2,'0')+'.json'),'utf8'));
  assert.equal(!!level.boss,id%4===0);
