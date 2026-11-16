@@ -488,6 +488,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.6</div><h2>Asas mais vivas</h2><p>Novas armaduras e detalhes para dragões inimigos, chefes e asas. O voo agora inclui batidas de asa com maior variação, movimento da cauda, inclinação do corpo e animações especiais dos chefes.</p><br><p>Os seis reinos ganharam monumentos próprios em geometria low-poly, sem baixar texturas. Um novo efeito leve de combate destaca tiros, esquivas, partículas e avisos dos chefes, sem alterar danos nem colisões.</p><br><p class="muted">Os salvamentos e a progressão continuam compatíveis. O estilo gráfico leve foi mantido para computadores e celulares.</p>';
+  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.7</div><h2>Dragões mais inteligentes</h2><p>Os batedores agora perseguem em formação e se esquivam. Arqueiros e sentinelas anunciam os disparos com um aviso visual e mantêm a mira travada para permitir sua esquiva. Brutos preparam investidas rápidas, seguidas de recuperação.</p><br><p>A IA é leve, mantém os modelos 3D e os seis chefes, respeita a dificuldade escolhida e conserva checkpoints antigos, companheiros e recompensas.</p><br><p class="muted">Os salvamentos e a progressão continuam compatíveis. O estilo gráfico leve foi mantido para computadores e celulares.</p>';
   $("#dialog").showModal();
 };
