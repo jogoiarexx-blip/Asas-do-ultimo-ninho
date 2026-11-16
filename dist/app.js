@@ -243,8 +243,10 @@ function nestUI() {
   $("#areaTitle").textContent = "O ninho";
   let content = '<div class="box"><div class="kicker">NINHO · NÍVEL ' + save.nest + "</div><h3>" + nestNames[save.nest] + '</h3><div class="inv"><span>' + save.scales + " escamas</span><span>" + save.embers + " brasas</span><span>" + save.cores + " núcleos</span></div>";
   if (save.nest < 5) {
-    let cost = save.nest * 5, cores = save.nest >= 3 ? 1 : 0;
-    content += "<p>Próxima construção · " + nestNames[save.nest + 1] + '</p><button class="ghost" data-buy="nest" ' + (save.scales < cost || save.cores < cores ? "disabled" : "") + ">Construir · " + cost + " escamas" + (cores ? " + 1 núcleo" : "") + "</button>";
+    const price = nestUpgradeCost(save.nest);
+    const lacking = save.scales < price.scales || save.cores < price.cores;
+    const coreLabel = price.cores ? " + " + price.cores + (price.cores === 1 ? " núcleo" : " núcleos") : "";
+    content += "<p>Próxima construção · " + nestNames[save.nest + 1] + '</p><button class="ghost" data-buy="nest" ' + (lacking ? "disabled" : "") + ">Construir · " + price.scales + " escamas" + coreLabel + "</button>" + (lacking ? '<small class="skill-shortfall">' + (save.scales < price.scales ? 'Faltam ' + (price.scales - save.scales) + ' escamas' : '') + (save.cores < price.cores ? (save.scales < price.scales ? ' · ' : '') + 'Faltam ' + (price.cores - save.cores) + ' núcleos' : '') + '</small>' : '');
   }
   content += '</div>' + evolutionUI() + '<div class="grid"><div class="box"><div class="kicker">OVOS</div><h3>Incubadora</h3><p>' + ready + ' prontos para nascer. A incubação avança ao concluir missões.</p><button class="ghost" data-act="hatch" ' + (!ready || save.nest < 2 ? "disabled" : "") + ">" + (save.nest < 2 ? "Requer ninho nível 2" : "Chocar ovos") + '</button></div><div class="box"><div class="kicker">FILHOTES · ' + b.length + "</div><h3>Berçário</h3><p>" + (b.length ? "Consulte as espécies e monte a equipe abaixo." : "Quebre as jaulas e toque nos filhotes para resgatá-los.") + "</p>" + '</div><div class="box"><div class="kicker">CAMPANHA</div><h3>Dificuldade</h3><p>Vale a partir do próximo voo iniciado.</p><select aria-label="Dificuldade" id="difficulty" ' + (save.cp ? "disabled" : "") + ">" + ["Fácil", "Normal", "Difícil"].map((d) => "<option " + (save.difficulty === d ? "selected" : "") + ">" + d + "</option>").join("") + "</select></div></div>";
   content += '<div class="box training-entry"><div><div class="kicker">NINHO · PRÁTICA</div><h3>Campo de treinamento</h3><p>Teste o sopro, os poderes e a dupla. Alvos fixos, mira em movimento e esquiva, sem gastar recursos. O voo da campanha continua guardado.</p></div><button class="gold" data-act="trainingStart" ' + (save.nest < 3 ? 'disabled' : '') + '>' + (save.nest < 3 ? 'Requer ninho nível 3' : 'Entrar no campo') + '</button></div>';
@@ -303,11 +305,11 @@ function advanceHatchSequence() {
 }
 function buy(key) {
   if (key === "nest") {
-    const n = save.nest, c = n >= 3 ? 1 : 0;
-    if (n >= 5 || save.scales < n * 5 || save.cores < c) return;
+    const cost = nestUpgradeCost(save.nest);
+    if (!cost || save.scales < cost.scales || save.cores < cost.cores) return;
+    save.scales -= cost.scales;
+    save.cores -= cost.cores;
     save.nest++;
-    save.scales -= n * 5;
-    save.cores -= c;
   } else {
     if (!purchaseUpgrade(key)) return;
   }
@@ -445,6 +447,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
+  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.1</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois. A versão 0.7.1 aumentou progressivamente os preços das construções e das habilidades, valorizando a exploração e os resgates.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
   $("#dialog").showModal();
 };
