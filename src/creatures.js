@@ -19,6 +19,12 @@ function wing(side,dye){
     w.tri(knuckle,a,cut,i%2?dye[1]:dye[0]);w.tri(knuckle,cut,b,dye[1],.88);
   }
   w.tri(inner,knuckle,tips[4],dye[0]);w.tri(inner,tips[4],root,dye[3]);
+  // Small layered highlights follow the existing membrane, not extra objects.
+  for(let i=0;i<3;i++){
+    const end=tips[i];
+    w.tri(knuckle,[(knuckle[0]+end[0])*.55,(knuckle[1]+end[1])*.55,(knuckle[2]+end[2])*.55],
+      [knuckle[0]-2-i*1.1,knuckle[1]-1.6-i*.9,knuckle[2]],dye[2],.76);
+  }
   w.rod(root,joint,1.2,.8,dye[3]);w.rod(joint,knuckle,.8,.65,dye[0]);for(const tip of tips)w.rod(knuckle,tip,.48,.08,dye[3],4);
   w.rod(knuckle,[-7,20.7,11*s],.7,0,dye[2]);return w.mesh()
 }
@@ -35,17 +41,42 @@ export function dragonModel(type='rubro',crowned=false){
   for(let i=0;i<6;i++){const x=-8+i*3;const y=4.6+i*.36;body.rod([x,y,0],[x-1.7,y+1.9+(crowned?.7:0),0],.9,0,d[2],4)}
   if(type==='bruto'||crowned)for(let i=0;i<3;i++)body.rod([-6+i*3,3.5,2],[-6+i*3,6,2.5],1.4,.5,d[3]);
   g.add(body.mesh());
+  // Separate colored armor preserves batching: one extra low-poly mesh per dragon.
+  if (['batedor', 'arqueiro', 'bruto'].includes(type) || crowned) {
+    const armor = new Sculpture();
+    const heavy = type === 'bruto' || crowned;
+    const accent = crowned ? d[2] : d[1];
+    for (const side of [-1, 1]) {
+      armor.tri([-4, 4.6, 2.2 * side], [2, 7.8, 2.3 * side], [6, 3.5, 2.8 * side], d[3]);
+      armor.tri([-2, 5, 2.6 * side], [2, 7.1, 2.8 * side], [4, 4.4, 2.9 * side], accent, .9);
+      armor.rod([8, 7.9, 1.5 * side], [5, heavy ? 15 : 12, 2.4 * side], heavy ? 1.25 : .8, 0, accent, 5);
+      if (heavy) armor.rod([-6, 2.4, 2 * side], [-10, 7, 3.4 * side], 1.5, 0, d[2], 5);
+    }
+    if (type === 'arqueiro') {
+      armor.rod([12, 10, 0], [9, 16.2, 0], .9, 0, d[2], 4);
+      armor.rod([9, 15, 0], [6, 18, 0], .5, 0, d[2], 4);
+    }
+    if (crowned) {
+      for(let i = -1; i <= 1; i++) armor.rod([11, 10.3, i * 2], [10, 17 + (1-Math.abs(i)) * 3, i * 2.4], 1.3, 0, d[2], 5);
+    }
+    const markings = armor.mesh(); markings.name = 'battleCrest'; g.add(markings);
+  }
   const tail=new Sculpture();tail.body([[-18,4,-2,.12,.2],[-15,1,-1,.7,.8],[-11,-1,0,1,1.2],[-6,-1.6,0,1.35,1.4],[0,0,0,1.85,1.9]],d[0],7);
   const tailMesh=tail.mesh();tailMesh.name='tail';tailMesh.position.set(-10,-.3,0);g.add(tailMesh);
   for(const s of [-1,1]){const w=wing(s,d);w.name=s===1?'nearWing':'farWing';g.add(w)}
   return g;
 }
-export function animateDragon(g,t,tilt=0){
-  const phase=t*6.3;
-  g.getObjectByName('nearWing').rotation.x=.22+Math.sin(phase)*.48;
-  g.getObjectByName('farWing').rotation.x=-.43-Math.sin(phase)*.5;
-  g.getObjectByName('tail').rotation.z=Math.sin(t*4)*.11;
-  g.rotation.z=tilt+Math.sin(t*3.3)*.025;
+export function animateDragon(g,t,tilt=0,energy=1){
+  const phase=t*(5.2+energy*1.25),beat=Math.sin(phase);
+  const near=g.getObjectByName('nearWing'),far=g.getObjectByName('farWing'),tail=g.getObjectByName('tail');
+  near.rotation.x=.13+beat*.54*energy;
+  far.rotation.x=-.3-beat*.59*energy;
+  near.rotation.z=.04+Math.sin(phase*.55)*.08;
+  far.rotation.z=-.04-Math.sin(phase*.55)*.08;
+  tail.rotation.z=Math.sin(t*(3.25+energy))*.14;
+  tail.rotation.y=Math.sin(t*2.7)*.08;
+  g.rotation.z=tilt+Math.sin(t*2.8)*.028*energy;
+  g.rotation.x=Math.sin(t*1.9)*.025*energy;
 }
 export function objectModel(kind){
   const a=new Sculpture();
