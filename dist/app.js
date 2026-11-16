@@ -103,6 +103,7 @@ function home() {
   $("#hud").hidden = true;
   $("#flightInfo").hidden = true;
   $("#bossSignal").hidden = true;
+  $("#bossHealth").hidden = true;
   $('#explorationMarkers').hidden = true;
   $("#touch").hidden = true;
   $("#ready").textContent = "PRONTO PARA VOAR";
@@ -128,6 +129,7 @@ async function startFlight(id, resume = false) {
   $("#hud").hidden = true;
   $("#flightInfo").hidden = true;
   $("#bossSignal").hidden = true;
+  $("#bossHealth").hidden = true;
   $('#explorationMarkers').hidden = true;
   overlay("CAMPANHA", "Preparando voo…", TITLES[id - 1], []);
   let loaded;
@@ -197,6 +199,7 @@ function endFlight(won) {
   $("#hud").hidden = true;
   $("#flightInfo").hidden = true;
   $("#bossSignal").hidden = true;
+  $("#bossHealth").hidden = true;
   $('#explorationMarkers').hidden = true;
   let id = level.id;
   if (won) {
@@ -485,6 +488,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.4</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois. A versão 0.7.1 aumentou progressivamente os preços das construções e das habilidades, valorizando a exploração e os resgates.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
+  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.5</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois. A versão 0.7.1 aumentou progressivamente os preços das construções e das habilidades, valorizando a exploração e os resgates.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
   $("#dialog").showModal();
 };
