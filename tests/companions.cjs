@@ -34,7 +34,7 @@ async function verify(){await vm.runInNewContext(source+`
  // Distinct passive abilities work together, including the second slot.
  level={...level,events:[],duration:9999};
  save.companions=['Verde','Cristalino'];run=freshRun();mode='flight';run.t=14.95;run.p.hp=4;run.p.inv=10;update(.1);assert.equal(run.p.hp,5);update(.05);assert.equal(run.p.hp,5);
- save.companions=['Rubro','Glacial'];run=freshRun();mode='flight';const slow=entity('batedor',100,10);slow.x=300;run.entities=[slow];run.p.inv=10;update(.05);assert.ok(Math.abs(slow.x-(300-46*.79*.05))<1e-8);
+ save.companions=['Rubro','Glacial'];run=freshRun();mode='flight';const slow=entity('batedor',100,10);slow.x=300;run.entities=[slow];run.p.inv=10;update(.05);assert.ok(Math.abs(slow.x-(300-46*encounterDifficulty().movement*.79*.05))<1e-8);
  save.companions=['Tempestade','Sombrio'];run=freshRun();mode='flight';run.t=4.95;run.p.inv=10;
  const first=entity('bruto',55,10),second=entity('bruto',150,11);first.hp=second.hp=10;first.x=second.x=300;run.entities=[first,second];update(.1);assert.equal(first.hp,5);assert.equal(second.hp,5);
  // Unknown and locked species cannot be equipped through a direct action.
