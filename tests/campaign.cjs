@@ -8,10 +8,12 @@ const source=['catalog','dragons','evolution','save','art','flight','training','
 const nodes=new Map(),storage=new Map(),requests=[];
 const nullFn=()=>{};
 function node(k){if(!nodes.has(k))nodes.set(k,{style:{},classList:{toggle:nullFn,add:nullFn,remove:nullFn},dataset:{},getContext:()=>({}),setAttribute:nullFn,focus:nullFn,addEventListener:nullFn,showModal:nullFn,close:nullFn});return nodes.get(k)}
-const scope={console,performance,document:{querySelector:node,querySelectorAll:()=>[],getElementById:node,addEventListener:nullFn},window:{addEventListener:nullFn},location:{protocol:'https:'},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},requestAnimationFrame:()=>1,cancelAnimationFrame:nullFn,setTimeout:()=>1,clearTimeout:nullFn,fetch:async url=>{requests.push(url);return {ok:true,json:()=>JSON.parse(fs.readFileSync(path.join(dir,url),'utf8'))}},assert};
+// Regressao: checkpoints e o menu inicial funcionam mesmo sem o painel #journal.
+const scope={console,performance,document:{querySelector:k=>k==='#journal'?null:node(k),querySelectorAll:()=>[],getElementById:k=>k==='journal'?null:node('#'+k),addEventListener:nullFn},window:{addEventListener:nullFn},location:{protocol:'https:'},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},requestAnimationFrame:()=>1,cancelAnimationFrame:nullFn,setTimeout:()=>1,clearTimeout:nullFn,fetch:async url=>{requests.push(url);return {ok:true,json:()=>JSON.parse(fs.readFileSync(path.join(dir,url),'utf8'))}},assert};
 async function verify(){await vm.runInNewContext(source+`
 (async()=>{
  assert.equal(unlocked(),1); assert.equal(cardCount(save.eggs),0);
+ assert.equal(document.getElementById('journal'),null); journal(); journalUI(); assert.equal(document.getElementById('journal'),null);
  const first=await getLevel(1); assert.equal(first.id,1); assert.equal(cache.next.id,2);
  level=first;run=freshRun();mode='flight';keys.add('ArrowRight');keys.add('Space');update(.05);keys.clear();assert.ok(run.p.x>85);assert.equal(run.shots.length,1);
  const egg=entity('ovo',run.p.y,71);egg.x=run.p.x;run.entities=[egg];update(.02);assert.equal(cardCount(save.eggs),1);assert.equal(run.eggs.length,1);
