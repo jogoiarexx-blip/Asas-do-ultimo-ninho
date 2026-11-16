@@ -505,6 +505,7 @@ function missionTip() {
 function draw() {
   if (!run || !level) return;
   flightView.update(level,run,save,particles);
+  window.drawFlightEffects?.(run,level,particles,game);
   setHud();
   const tip=document.querySelector('#flightTip'), text=missionTip();
   if(tip.textContent!==text)tip.textContent=text;
