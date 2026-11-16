@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const dir=path.resolve(__dirname,'../dist');
-const source=['catalog','dragons','save','art','flight','training','app'].map(n=>fs.readFileSync(path.join(dir,n+'.js'),'utf8')).join('\n');
+const source=['catalog','dragons','evolution','save','art','flight','training','app'].map(n=>fs.readFileSync(path.join(dir,n+'.js'),'utf8')).join('\n');
 const nodes=new Map(),storage=new Map(),requests=[];
 const nullFn=()=>{};
 function node(k){if(!nodes.has(k))nodes.set(k,{style:{},classList:{toggle:nullFn,add:nullFn,remove:nullFn},dataset:{},getContext:()=>({}),setAttribute:nullFn,focus:nullFn,addEventListener:nullFn,showModal:nullFn,close:nullFn});return nodes.get(k)}
@@ -80,7 +80,7 @@ async function verify(){await vm.runInNewContext(source+`
 }
 const offlineFiles=[];
 const offline=vm.createContext({...scope,location:{protocol:'file:'},document:{...scope.document,createElement:()=>({remove:nullFn}),head:{append(script){offlineFiles.push(script.src);vm.runInContext(fs.readFileSync(path.join(dir,script.src),'utf8'),offline);script.onload();}}}});
-vm.runInContext(fs.readFileSync(path.join(dir,'dragons.js'),'utf8')+'\n'+fs.readFileSync(path.join(dir,'save.js'),'utf8'),offline);
+vm.runInContext(fs.readFileSync(path.join(dir,'dragons.js'),'utf8')+'\n'+fs.readFileSync(path.join(dir,'evolution.js'),'utf8')+'\n'+fs.readFileSync(path.join(dir,'save.js'),'utf8'),offline);
 await vm.runInContext('(async()=>{const current=await getLevel(2);assert.equal(current.duration,105);assert.ok(current.exploration);assert.equal(cache.current.id,2);assert.equal(cache.next.id,3);await cache.next.promise;assert.equal(pendingLocal.size,0)})()',offline);
 assert.deepEqual(offlineFiles,['levels-local/02.js','levels-local/03.js']);
 console.log('OK · três rotas completas, entrada secreta por tiros e contato, prazo da entrada, tesouros únicos, checkpoint antigo, retomada e 24 pacotes offline.');}

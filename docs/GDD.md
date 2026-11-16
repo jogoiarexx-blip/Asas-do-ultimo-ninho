@@ -1128,3 +1128,8 @@ O ninho recebeu cinco estágios visuais, filhotes na maquete e fichas das seis e
 ## Implementação v0.6 · campo de treinamento
 
 O ninho nível 3 agora permite praticar o combate compartilhado da campanha em três exercícios: alvos fixos, mira em movimento e esquiva. A sessão é temporária, com estatísticas, recarga e poderes liberados apenas para teste. Não há ganho de recursos ou substituição do checkpoint. A árvore completa de defesa, energia e recuperação permanece como próximo marco. Consulte CHECKPOINT.md para testes, limites e detalhes do que está implementado.
+
+
+## Implementação v0.7 · trilhas de atributos
+
+O ninho apresenta seis melhorias em três caminhos: ofensiva, proteção e mobilidade. Defesa usa um escudo recarregável; energia e recuperação expandem o uso dos poderes. As fichas mostram custos, requisitos e comparação antes/depois, preservando os investimentos anteriores. Os atributos e o estado do escudo são salvos por voo; o treino usa a mesma lógica. A árvore completa de habilidades especiais do GDD permanece parcialmente planejada. Consulte CHECKPOINT.md para os níveis, efeitos e limites desta versão.

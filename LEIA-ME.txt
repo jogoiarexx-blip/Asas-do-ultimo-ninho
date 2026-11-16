@@ -1,4 +1,4 @@
-ASAS DO ÚLTIMO NINHO · v0.6.0 — ASAS EM TREINAMENTO
+ASAS DO ÚLTIMO NINHO · v0.7.0 — TRILHAS DE EVOLUÇÃO
 
 COMO JOGAR
 Extraia o ZIP inteiro e abra JOGAR.html no navegador.
@@ -12,7 +12,27 @@ Poder elemental: E após concluir a fase 04
 Pausar e salvar: P ou Esc
 Também há botões para telas sensíveis ao toque.
 
-NOVIDADES DA V0.6 — CAMPO DE TREINAMENTO
+NOVIDADES DA V0.7 — TRILHAS DE EVOLUÇÃO
+O ninho agora organiza as melhorias em três caminhos:
+- Ofensiva: sopro de fogo e reserva elemental.
+- Proteção: vida e escudo de escamas.
+- Mobilidade: asas velozes e fôlego ancestral.
+
+Cada ficha mostra níveis, custos, requisitos e a comparação antes/depois.
+Sopro, vida e velocidade já comprados continuam disponíveis.
+O escudo absorve impactos e regenera suas cargas: 1 carga/16 s no nível 1,
+1 carga/12 s no nível 2 e 2 cargas/10 s no nível 3. O HUD mostra a proteção.
+A reserva aumenta a energia máxima em 20 por nível, até 180.
+O fôlego aumenta a recuperação em 2 de energia por segundo por nível.
+
+As melhorias novas exigem construções e atributos anteriores. Os níveis avançados
+pedem fases concluídas e núcleos. Consulte os requisitos nas fichas do ninho.
+Novas compras valem em outro voo ou ao zerar/trocar um exercício de treinamento.
+O voo salvo mantém seus atributos, cargas e relógio de recarga do escudo.
+No treino, Recarregar poderes também restaura o escudo e a energia máxima atual.
+O painel distingue ataques que tiram vida de bloqueios absorvidos pelo escudo.
+
+CONTEÚDO DA V0.6 — CAMPO DE TREINAMENTO
 No ninho nível 3, use Entrar no campo. Escolha entre:
 - Alvos fixos: pratique a altura do sopro contra três alvos.
 - Mira em movimento: acompanhe um alvo que sobe e desce.

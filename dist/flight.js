@@ -5,11 +5,19 @@ let flightView;
 let mode = "menu", level = null, run = null, raf = 0, stamp = 0, particles = [], lastHUD = "", lastPhase = "", requestId = 0;
 const bound = (v, a, b) => Math.min(b, Math.max(a, v));
 const isTraining = () => !!level?.training;
-const health = (team = activeCompanions()) => (save.difficulty === "Fácil" ? 8 : save.difficulty === "Difícil" ? 3 : 5) + save.up.hp * 2 + (team.includes('Cristalino') ? 2 : 0);
+const health = (team = activeCompanions()) => dragonStats(save.up, team).hp;
 function flightTeam() { return run?.companions || activeCompanions(); }
 function hasFlightCompanion(name) { return flightTeam().includes(name); }
+function flightStats() { return run?.stats || dragonStats(run?.upgrades || save.up, flightTeam()); }
+function flightUpgrades() { return run?.upgrades || save.up; }
+function initializeFlightBuild() {
+  run.upgrades ??= normalizeUpgrades(save.up);
+  run.stats ??= dragonStats(run.upgrades, flightTeam());
+  run.p.shield ??= run.stats.shieldMax; run.p.shieldClock ??= 0; run.blocks ??= 0;
+}
 function freshRun() {
-  return { companions: [...activeCompanions()], t: 0, event: 0, p: { x: 85, y: 111, hp: health(), inv: 1, dash: 0, cool: 0, fire: 0, energy: 100, fury: 0, power: 0 }, entities: [], bullets: [], shots: [], kills: 0, hits: 0, loot: 0, bossSent: false, wonBoss: false, eggs: [], babies: [], beat: -1, ancient: !!save.medals[24] };
+  const companions = [...activeCompanions()], upgrades = normalizeUpgrades(save.up), stats = dragonStats(upgrades, companions);
+  return { companions, upgrades, stats, t: 0, event: 0, p: { x: 85, y: 111, hp: stats.hp, inv: 1, dash: 0, cool: 0, fire: 0, energy: stats.energyMax, fury: 0, power: 0, shield: stats.shieldMax, shieldClock: 0 }, entities: [], bullets: [], shots: [], kills: 0, hits: 0, blocks: 0, loot: 0, bossSent: false, wonBoss: false, eggs: [], babies: [], beat: -1, ancient: !!save.medals[24] };
 }
 // Optional, serializable state: old checkpoints acquire exploration without a reset.
 function explorationState() {
@@ -82,11 +90,12 @@ function setHud() {
   };
   const realm = level.realm || REALMS[Math.floor((level.id - 1) / 4)];
   const team = flightTeam();
-  const phase = '<span class="phase-kicker">' + (isTraining() ? 'TREINO' : 'FASE ' + String(level.id).padStart(2, '0')) + ' <i>·</i> ' + realm + '</span><strong>' + level.name + '</strong>' + (team.length ? '<small class="team-hud">' + team.join(' + ') + '</small>' : '');
+  const phase = '<span class="phase-kicker">' + (isTraining() ? 'TREINO' : 'FASE ' + String(level.id).padStart(2, '0')) + ' <i>·</i> ' + realm + '</span><strong>' + level.name + '</strong>' + (team.length ? '<small class="team-hud">' + team.join(' + ') + '</small>' : '') + (flightStats().shieldMax && p.shield < flightStats().shieldMax ? '<small class="shield-return">Escudo em ' + Math.max(0, Math.ceil(flightStats().shieldDelay - p.shieldClock)) + ' s</small>' : '');
   document.querySelector('#hud').classList.toggle('practice', isTraining());
-  const meters = meter('health', 'VIDA', '♥', p.hp, health(flightTeam())) +
-    meter('energy', 'ENERGIA', 'ϟ', Math.floor(p.energy), 100) +
+  const meters = meter('health', 'VIDA', '♥', p.hp, flightStats().hp) +
+    meter('energy', 'ENERGIA', 'ϟ', Math.floor(p.energy), flightStats().energyMax) +
     meter('fury', 'FÚRIA', '✦', Math.round(p.fury), 100) +
+    (flightStats().shieldMax ? meter('shield', 'ESCUDO', '◇', p.shield, flightStats().shieldMax) : '') +
     (isTraining() ? '' : meter('eggs', 'OVOS', '◈', run.eggs.length, level.eggs) +
     (level.babies ? meter('babies', 'FILHOTES', '♧', run.babies.length, level.babies) : ''));
   if (phase !== lastPhase) {
@@ -130,6 +139,11 @@ function awardItem(e) {
 function hurt() {
   const p = run.p;
   if (p.inv > 0 || p.dash > 0) return;
+  if (p.shield > 0) {
+    p.shield--; p.shieldClock = 0; p.inv = 1.5; run.blocks = (run.blocks || 0) + 1;
+    p.fury = Math.min(100, p.fury + 13); burst(p.x, p.y, '#a4e5f4', 18);
+    note(440, .12, 'triangle', .04, 0, 700); return;
+  }
   p.hp = isTraining() ? Math.max(1, p.hp - 1) : p.hp - 1;
   p.inv = 1.5;
   run.hits++;
@@ -272,15 +286,21 @@ function update(dt) {
   const p = run.p;
   run.t += dt;
   for (const key of ["inv", "dash", "cool", "fire", "power"]) p[key] = Math.max(0, p[key] - dt);
-  p.energy = Math.min(100, p.energy + dt * (7 + save.nest));
+  const stats = flightStats();
+  p.energy = Math.min(stats.energyMax, p.energy + dt * stats.energyRegen);
+  if (stats.shieldMax && p.shield < stats.shieldMax) {
+    p.shieldClock += dt;
+    while (p.shield < stats.shieldMax && p.shieldClock >= stats.shieldDelay) { p.shield++; p.shieldClock -= stats.shieldDelay; }
+    if (p.shield === stats.shieldMax) p.shieldClock = 0;
+  }
   p.fury = Math.min(100, p.fury + dt * 0.8);
   const axis = (a, b, c, d) => Number(keys.has(a) || keys.has(b)) - Number(keys.has(c) || keys.has(d));
   let dx = axis("ArrowRight", "KeyD", "ArrowLeft", "KeyA"), dy = axis("ArrowDown", "KeyS", "ArrowUp", "KeyW");
-  let l = Math.max(1, Math.hypot(dx, dy)), speed = 100 + save.up.speed * 12;
+  let l = Math.max(1, Math.hypot(dx, dy)), speed = stats.speed;
   if ((keys.has("ShiftLeft") || keys.has("ShiftRight")) && !p.cool) {
     p.dash = 0.31;
     p.inv = Math.max(p.inv, 0.38);
-    p.cool = 2.4 - save.up.speed * 0.15;
+    p.cool = stats.dashCooldown;
     note(350, 0.13, "triangle", 0.05, 0, 850);
     if (!dx && !dy) p.dashForward = true;
     else p.dashForward = false;
@@ -296,19 +316,19 @@ function update(dt) {
   if (isTraining()) trainingTick();
   if (keys.has("Space") && !p.fire) {
     p.fire = 0.22;
-    run.shots.push({ x: p.x + 13, y: p.y, v: 244, vy: 0, d: 1 + save.up.atk + (hasFlightCompanion('Rubro') ? 1 : 0) });
-    if (save.up.atk >= 3) run.shots.push({ x: p.x + 10, y: p.y - 4, v: 240, vy: -9, d: 1 + save.up.atk });
+    run.shots.push({ x: p.x + 13, y: p.y, v: 244, vy: 0, d: stats.primary });
+    if (flightUpgrades().atk >= 3) run.shots.push({ x: p.x + 10, y: p.y - 4, v: 240, vy: -9, d: stats.secondary });
     note(290, 0.065, "triangle", 0.026, 0, 108);
   }
   if (keys.has("KeyE") && (save.medals[4] || isTraining()) && p.energy >= 28 && !p.power) {
     p.energy -= 28;
     p.power = 0.7;
-    for (let i = -1; i < 2; i++) run.shots.push({ x: p.x + 14, y: p.y, v: 210, vy: i * 35, d: 4 + save.up.atk, special: true });
+    for (let i = -1; i < 2; i++) run.shots.push({ x: p.x + 14, y: p.y, v: 210, vy: i * 35, d: stats.elemental, special: true });
     note(420, 0.2, "sawtooth", 0.035, 0, 80);
   }
   if (keys.has("KeyF") && p.fury >= 99.9) {
     p.fury = 0;
-    for (const e of run.entities) if (hostile(e)) strike(e, 10 + save.up.atk);
+    for (const e of run.entities) if (hostile(e)) strike(e, stats.fury);
     run.bullets = [];
     burst(p.x, p.y, "#fff0a8", 40);
     chime();
@@ -316,7 +336,7 @@ function update(dt) {
   let beat = Math.floor(run.t / 5);
   if (beat !== run.beat) {
     run.beat = beat;
-    if (beat && hasFlightCompanion('Verde') && beat % 3 === 0) p.hp = Math.min(health(flightTeam()), p.hp + 1);
+    if (beat && hasFlightCompanion('Verde') && beat % 3 === 0) p.hp = Math.min(stats.hp, p.hp + 1);
     if (beat) for (const name of flightTeam()) if (['Tempestade', 'Sombrio'].includes(name)) {
       for (const e of run.entities.filter(e => !e.dead && hostile(e)).slice(0, 2)) strike(e, name === 'Sombrio' ? 3 : 2);
     }

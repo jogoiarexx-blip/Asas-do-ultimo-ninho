@@ -80,6 +80,7 @@ export class FlightView{
     const slope=Math.max(-.3,Math.min(.3,((this.lastY??p.y)-p.y)*.075));this.lastY=p.y;
     this.bank=(this.bank||0)*.76+slope*.24;animateDragon(player,t,this.bank);
     player.visible=p.inv<=0||Math.floor(t*11)%4!==0||t<1;
+    if(p.shield>0){const shield=place('player-shield','escudo',p.x,p.y,7);shield.scale.setScalar((p.shield>1?1.08:1)+Math.sin(t*2)*.02);shield.rotation.z=Math.sin(t)*.04;}
     const companions=run.companions||save.companions||(save.companion?[save.companion]:[]);
     companions.slice(0,2).forEach((name,i)=>{
       const b=place(this.buddyKeys[i],'companheiro:'+name,Math.max(8,p.x-23-i*13),Math.max(15,Math.min(208,p.y+(i?-13:13)+Math.sin(t*3+i)*2)),2);

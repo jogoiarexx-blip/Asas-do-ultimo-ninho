@@ -49,6 +49,13 @@ export function animateDragon(g,t,tilt=0){
 }
 export function objectModel(kind){
   const a=new Sculpture();
+  if(kind==='escudo'){
+    for(let i=0;i<14;i++){
+      const u=i*Math.PI/7,v=(i+.8)*Math.PI/7;
+      a.rod([Math.cos(u)*26,Math.sin(u)*23,1],[Math.cos(v)*26,Math.sin(v)*23,1],.6,.6,'#a6e4eb',4);
+    }
+    const g=new Group();g.add(a.mesh());return g;
+  }
   if(kind==='alvo'){
     // Concentric target circles face the camera, matching the combat hit box.
     a.rod([0,-19,-2],[0,0,-2],1.2,1.2,'#a58b71',5);

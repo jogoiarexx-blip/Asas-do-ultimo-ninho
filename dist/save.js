@@ -1,6 +1,6 @@
 "use strict";
 const SAVEKEY = "ultimoNinho.save.v1", BACKUP = SAVEKEY + ".backup";
-const freshSave = () => ({ v: 1, medals: {}, scales: 0, embers: 0, cores: 0, eggs: {}, babies: {}, companion: null, up: { atk: 0, hp: 0, speed: 0 }, nest: 1, cp: null, last: null, audio: false, difficulty: "Normal", raids: 0, exploration: { rewards: {}, routes: {} } });
+const freshSave = () => ({ v: 1, medals: {}, scales: 0, embers: 0, cores: 0, eggs: {}, babies: {}, companion: null, up: normalizeUpgrades(), nest: 1, cp: null, last: null, audio: false, difficulty: "Normal", raids: 0, exploration: { rewards: {}, routes: {} } });
 function usable(s) {
   return s?.v === 1 && s.up && s.medals && s.eggs && s.babies && Number.isInteger(s.nest) && (!s.cp || s.cp.id >= 1 && s.cp.id <= 24 && s.cp.run?.p && Array.isArray(s.cp.run.entities) && Array.isArray(s.cp.run.bullets));
 }
@@ -9,6 +9,7 @@ function loadSave() {
     let s = JSON.parse(localStorage.getItem(key));
     if (usable(s)) {
       const loaded = { ...freshSave(), ...s };
+      loaded.up = normalizeUpgrades(s.up);
       normalizeCompanions(loaded);
       return loaded;
     }
@@ -18,6 +19,7 @@ function loadSave() {
 }
 let save = loadSave(), savedOK = true;
 function writeSave() {
+  save.up = normalizeUpgrades(save.up);
   normalizeCompanions(save);
   try {
     const old = localStorage.getItem(SAVEKEY);

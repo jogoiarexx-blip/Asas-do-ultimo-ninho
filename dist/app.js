@@ -112,6 +112,7 @@ async function startFlight(id, resume = false) {
   selected = id;
   run = resume && save.cp?.id === id ? JSON.parse(JSON.stringify(save.cp.run)) : freshRun();
   run.companions ??= [...activeCompanions()];
+  initializeFlightBuild();
   mode = "flight";
   keys.clear();
   particles = [];
@@ -203,7 +204,29 @@ function mapUI() {
     return '<button class="choice" data-stage="' + n + '" ' + (n > limit ? "disabled" : "") + "><span>FASE " + pad(n) + " · " + (save.medals[24] ? "ANCESTRAL" : save.medals[n] || (n > limit ? "BLOQUEADA" : "DISPONÍVEL")) + "</span>" + name + "</button>";
   }).join("") + "</div></div>").join("");
 }
-const upLabels = { atk: "Sopro de fogo", hp: "Escamas reforçadas", speed: "Asas velozes" }, upDesc = { atk: "Aumenta o dano de cada disparo.", hp: "Acrescenta dois pontos de vida.", speed: "Acelera o voo e reduz a recarga da esquiva." }, nestNames = ["", "Abrigo básico", "Incubadora e berçário", "Oficina de escamas", "Santuário elemental", "Grande Ninho"];
+const nestNames = ["", "Abrigo básico", "Incubadora e berçário", "Oficina de escamas", "Santuário elemental", "Grande Ninho"];
+function statNumber(value) { return String(Number(value.toFixed(2))).replace('.', ','); }
+function evolutionComparison(key, before, after) {
+  const pair = (a, b, unit = '') => statNumber(a) + unit + ' → ' + statNumber(b) + unit;
+  if (key === 'atk') return 'Dano do sopro: ' + pair(before.primary, after.primary);
+  if (key === 'hp') return 'Vida máxima: ' + pair(before.hp, after.hp);
+  if (key === 'energy') return 'Energia máxima: ' + pair(before.energyMax, after.energyMax);
+  if (key === 'regen') return 'Energia por segundo: ' + pair(before.energyRegen, after.energyRegen);
+  if (key === 'speed') return 'Velocidade: ' + pair(before.speed - 100, after.speed - 100, '%') + ' · Esquiva: ' + pair(before.dashCooldown, after.dashCooldown, ' s');
+  return 'Cargas: ' + pair(before.shieldMax, after.shieldMax) + ' · Recarga: ' + (before.shieldMax ? pair(before.shieldDelay, after.shieldDelay, ' s') : statNumber(after.shieldDelay) + ' s');
+}
+function evolutionUI() {
+  const current = dragonStats();
+  const summary = [['VIDA', current.hp], ['SOPRO', current.primary], ['ESCUDO', current.shieldMax + ' carga(s)'], ['ENERGIA', current.energyMax], ['RECUPERAÇÃO', current.energyRegen + '/s'], ['VELOCIDADE', '+' + (current.speed - 100) + '%']];
+  const branches = [['offense', 'Ofensiva', 'Sopro e reserva elemental', ['atk','energy']], ['defense', 'Proteção', 'Vida e escudo recarregável', ['hp','def']], ['mobility', 'Mobilidade', 'Asas e recuperação de energia', ['speed','regen']]];
+  return '<section class="evolution"><div class="kicker">EVOLUÇÃO DO DRAGÃO</div><h3>Escolha como voar</h3><p class="muted">Combine os três caminhos. As compras valem ao iniciar outro voo ou reiniciar um exercício. O voo salvo mantém seus atributos.</p><div class="evolution-summary">' + summary.map(([label,value]) => '<div><span>' + label + '</span><strong>' + value + '</strong></div>').join('') + '</div><div class="evolution-branches">' + branches.map(([branch,title,sub,keys]) => '<section class="evolution-branch ' + branch + '"><div class="branch-title"><span>' + title + '</span><small>' + sub + '</small></div>' + keys.map(key => {
+    const state = upgradeState(key), nextUp = { ...normalizeUpgrades(save.up), [key]: Math.min(state.next, state.info.max) }, next = dragonStats(nextUp);
+    const costs = Object.entries(state.cost).filter(([,value]) => value).map(([resource,value]) => '<span>' + value + ' ' + ({scales:'escamas',embers:'brasas',cores:'núcleos'})[resource] + '</span>').join('');
+    const requirements = state.maxed ? '' : state.requirements.length ? '<ul class="skill-requirements">' + state.requirements.map(text => '<li class="' + (state.missing.includes(text) ? '' : 'met') + '">' + (state.missing.includes(text) ? '◇ ' : '✓ ') + text + '</li>').join('') + '</ul>' : '<p class="skill-open">Disponível desde o abrigo inicial.</p>';
+    const progress = Array.from({length:state.info.max},(_,i) => '<i class="' + (i < state.value ? 'learned' : '') + '"></i>').join('');
+    return '<article class="evolution-skill ' + (state.maxed ? 'mastered' : '') + '"><div class="skill-level">NÍVEL ' + state.value + '/' + state.info.max + '</div><h4>' + state.info.name + '</h4><div class="skill-progress" aria-label="Nível ' + state.value + ' de ' + state.info.max + '">' + progress + '</div><p>' + state.info.desc + '</p><div class="skill-comparison">' + (state.maxed ? 'Evolução completa.' : evolutionComparison(key,current,next)) + '</div>' + requirements + (state.maxed ? '' : '<div class="skill-cost">' + costs + '</div>') + '<button class="' + (state.available ? 'gold' : 'ghost') + '" data-buy="' + key + '" ' + (!state.available ? 'disabled' : '') + '>' + (state.maxed ? 'Nível máximo' : state.missing.length ? 'Requisitos pendentes' : state.shortfall.length ? 'Recursos insuficientes' : 'Aprender nível ' + state.next) + '</button>' + (!state.maxed && state.shortfall.length ? '<small class="skill-shortfall">' + state.shortfall.join(' · ') + '</small>' : '') + '</article>';
+  }).join('') + '</section>').join('') + '</div></section>';
+}
 function nurseryUI() {
   const team = activeCompanions(), capacity = companionSlots();
   const slots = [0, 1].map(i => '<div class="companion-slot ' + (team[i] ? 'equipped' : '') + '"><span>COMPANHEIRO ' + (i + 1) + '</span><strong>' + (team[i] || (i >= capacity ? 'Ninho nível ' + (i ? 3 : 2) : 'Espaço livre')) + '</strong>' + (team[i] ? '<button class="ghost" data-equip="' + team[i] + '">Retirar</button>' : '') + '</div>').join('');
@@ -223,10 +246,7 @@ function nestUI() {
     let cost = save.nest * 5, cores = save.nest >= 3 ? 1 : 0;
     content += "<p>Próxima construção · " + nestNames[save.nest + 1] + '</p><button class="ghost" data-buy="nest" ' + (save.scales < cost || save.cores < cores ? "disabled" : "") + ">Construir · " + cost + " escamas" + (cores ? " + 1 núcleo" : "") + "</button>";
   }
-  content += '</div><div class="grid">' + Object.keys(upLabels).map((key) => {
-    let val = save.up[key], cost = 5 + val * 5, ember = val >= 2 ? 2 : 0;
-    return '<div class="box"><div class="kicker">MELHORIA · ' + val + "/4</div><h3>" + upLabels[key] + "</h3><p>" + upDesc[key] + '</p><button class="ghost" data-buy="' + key + '" ' + (val >= 4 || save.scales < cost || save.embers < ember ? "disabled" : "") + ">" + (val >= 4 ? "Nível máximo" : "Melhorar · " + cost + " escamas" + (ember ? " + 2 brasas" : "")) + "</button></div>";
-  }).join("") + '</div><div class="grid"><div class="box"><div class="kicker">OVOS</div><h3>Incubadora</h3><p>' + ready + ' prontos para nascer. A incubação avança ao concluir missões.</p><button class="ghost" data-act="hatch" ' + (!ready || save.nest < 2 ? "disabled" : "") + ">" + (save.nest < 2 ? "Requer ninho nível 2" : "Chocar ovos") + '</button></div><div class="box"><div class="kicker">FILHOTES · ' + b.length + "</div><h3>Berçário</h3><p>" + (b.length ? "Consulte as espécies e monte a equipe abaixo." : "Quebre as jaulas e toque nos filhotes para resgatá-los.") + "</p>" + '</div><div class="box"><div class="kicker">CAMPANHA</div><h3>Dificuldade</h3><p>Vale a partir do próximo voo iniciado.</p><select aria-label="Dificuldade" id="difficulty" ' + (save.cp ? "disabled" : "") + ">" + ["Fácil", "Normal", "Difícil"].map((d) => "<option " + (save.difficulty === d ? "selected" : "") + ">" + d + "</option>").join("") + "</select></div></div>";
+  content += '</div>' + evolutionUI() + '<div class="grid"><div class="box"><div class="kicker">OVOS</div><h3>Incubadora</h3><p>' + ready + ' prontos para nascer. A incubação avança ao concluir missões.</p><button class="ghost" data-act="hatch" ' + (!ready || save.nest < 2 ? "disabled" : "") + ">" + (save.nest < 2 ? "Requer ninho nível 2" : "Chocar ovos") + '</button></div><div class="box"><div class="kicker">FILHOTES · ' + b.length + "</div><h3>Berçário</h3><p>" + (b.length ? "Consulte as espécies e monte a equipe abaixo." : "Quebre as jaulas e toque nos filhotes para resgatá-los.") + "</p>" + '</div><div class="box"><div class="kicker">CAMPANHA</div><h3>Dificuldade</h3><p>Vale a partir do próximo voo iniciado.</p><select aria-label="Dificuldade" id="difficulty" ' + (save.cp ? "disabled" : "") + ">" + ["Fácil", "Normal", "Difícil"].map((d) => "<option " + (save.difficulty === d ? "selected" : "") + ">" + d + "</option>").join("") + "</select></div></div>";
   content += '<div class="box training-entry"><div><div class="kicker">NINHO · PRÁTICA</div><h3>Campo de treinamento</h3><p>Teste o sopro, os poderes e a dupla. Alvos fixos, mira em movimento e esquiva, sem gastar recursos. O voo da campanha continua guardado.</p></div><button class="gold" data-act="trainingStart" ' + (save.nest < 3 ? 'disabled' : '') + '>' + (save.nest < 3 ? 'Requer ninho nível 3' : 'Entrar no campo') + '</button></div>';
   content += nurseryUI();
   const discoveries = save.exploration || { rewards: {}, routes: {} };
@@ -289,11 +309,7 @@ function buy(key) {
     save.scales -= n * 5;
     save.cores -= c;
   } else {
-    let v = save.up[key], cost = 5 + v * 5, ember = v >= 2 ? 2 : 0;
-    if (v === void 0 || v >= 4 || save.scales < cost || save.embers < ember) return;
-    save.scales -= cost;
-    save.embers -= ember;
-    save.up[key]++;
+    if (!purchaseUpgrade(key)) return;
   }
   writeSave();
   nestUI();
@@ -375,7 +391,7 @@ $(".brand").onclick = (e) => {
 };
 $("#help").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">GUIA DE VOO</div><h2>Controles</h2><dl><dt>Movimentar</dt><dd>WASD / Setas</dd><dt>Sopro de fogo</dt><dd>Segurar Espaço</dd><dt>Esquiva</dt><dd>Shift</dd><dt>Fúria carregada</dt><dd>F</dd><dt>Poder elemental</dt><dd>E · após fase 04</dd><dt>Pausar e salvar</dt><dd>P / Esc</dd></dl><p class="muted">Toque nos ovos para recolhê-los. Atire nas jaulas antes de se aproximar dos filhotes. Na fase 02, toque nos arcos para escolher uma rota. Quebre o selo com fogo e toque na entrada verde para encontrar a câmara secreta. No ninho, equipe até dois companheiros a partir do nível 3; suas habilidades funcionam juntas. Nesse nível, o campo de treinamento permite praticar sem alterar a campanha.</p><br>';
+  $("#dialogContent").innerHTML = '<div class="kicker">GUIA DE VOO</div><h2>Controles</h2><dl><dt>Movimentar</dt><dd>WASD / Setas</dd><dt>Sopro de fogo</dt><dd>Segurar Espaço</dd><dt>Esquiva</dt><dd>Shift</dd><dt>Fúria carregada</dt><dd>F</dd><dt>Poder elemental</dt><dd>E · após fase 04</dd><dt>Pausar e salvar</dt><dd>P / Esc</dd></dl><p class="muted">Toque nos ovos para recolhê-los. Atire nas jaulas antes de se aproximar dos filhotes. Na fase 02, toque nos arcos para escolher uma rota. Quebre o selo com fogo e toque na entrada verde para encontrar a câmara secreta. No ninho, equipe até dois companheiros a partir do nível 3; suas habilidades funcionam juntas. Nesse nível, o campo de treinamento permite praticar sem alterar a campanha. O escudo absorve impactos e recarrega sozinho; acompanhe suas cargas no HUD.</p><br>';
   $("#dialog").showModal();
 };
 $("#closeDialog").onclick = () => $("#dialog").close();
@@ -429,6 +445,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.6</div><h2>Asas em Treinamento</h2><p>O ninho nível 3 agora abre um campo com alvos fixos, mira em movimento e esquiva contra rajadas sinalizadas. Veja o dano, o ritmo dos ataques, os alvos destruídos e os impactos recebidos.</p><br><p>Teste a dupla equipada, recarregue vida e poderes e repita os exercícios. O poder E fica disponível dentro do treino mesmo antes de ser liberado na campanha.</p><br><p class="muted">O treino não concede moedas, não avança a incubação e não substitui o voo salvo. As 24 fases, as rotas de exploração, o berçário e o GDD completo continuam no pacote.</p><br>';
+  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
   $("#dialog").showModal();
 };

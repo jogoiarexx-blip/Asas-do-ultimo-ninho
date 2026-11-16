@@ -47,9 +47,10 @@ function changeTrainingDrill(drill) {
 }
 function refillTraining() {
   if (!isTraining() || !['flight', 'paused'].includes(mode)) return;
-  run.p.energy = 100; run.p.fury = 100; run.p.hp = health(flightTeam());
+  run.p.energy = flightStats().energyMax; run.p.fury = 100; run.p.hp = flightStats().hp;
+  run.p.shield = flightStats().shieldMax; run.p.shieldClock = 0;
   run.p.power = 0; run.p.cool = 0; run.p.inv = 1;
-  run.training.note = 'Vida, energia, fúria e esquiva restauradas.'; run.training.noteUntil = run.t + 3;
+  run.training.note = 'Vida, escudo, energia, fúria e esquiva restaurados.'; run.training.noteUntil = run.t + 3;
   draw();
 }
 function leaveTraining() {
@@ -88,9 +89,9 @@ function drawTraining() {
   signal.hidden = !active || !run.training.warning;
   if (!active) return;
   const state = run.training;
-  $('#trainingTeam').textContent = flightTeam().length ? flightTeam().join(' + ') : 'Sem companheiros equipados';
+  $('#trainingTeam').textContent = (flightTeam().length ? flightTeam().join(' + ') : 'Sem companheiros equipados') + ' · Energia ' + flightStats().energyMax + ' · Recarga ' + flightStats().energyRegen + '/s' + (flightStats().shieldMax ? ' · Escudo ' + run.p.shield + '/' + flightStats().shieldMax : '');
   const elapsed = Math.floor(run.t), dps = state.damageStarted === null ? '0.0' : (state.damage / Math.max(1, run.t - state.damageStarted)).toFixed(1);
-  const stats = [['TEMPO', Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0')], ['ALVOS', run.kills], ['DANO', Math.round(state.damage)], ['DANO / S', dps], ['IMPACTOS', run.hits], ['ESQUIVAS COM SHIFT', state.dodges]];
+  const stats = [['TEMPO', Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0')], ['ALVOS', run.kills], ['DANO', Math.round(state.damage)], ['DANO / S', dps], ['IMPACTOS', run.hits], ['BLOQUEIOS', run.blocks || 0], ['ESQUIVAS COM SHIFT', state.dodges]];
   const markup = stats.map(([label, value]) => '<div><span>' + label + '</span><strong>' + value + '</strong></div>').join('');
   if ($('#trainingStats').innerHTML !== markup) $('#trainingStats').innerHTML = markup;
   document.querySelectorAll('[data-training-drill]').forEach(b => {

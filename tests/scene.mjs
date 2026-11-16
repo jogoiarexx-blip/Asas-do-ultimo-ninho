@@ -30,7 +30,7 @@ for(const kind of ['rubro','glacial','verde','cristalino','tempestade','sombrio'
   const wing=model.getObjectByName('nearWing');animateDragon(model,1.4);
   assert.ok(wing.rotation.x!==0);inspect(model);disposeTree(model);
 }
-for(const kind of ['ovo','jaula','barreira','raio','perigo','fagulha','fogo','poder','rota','selo','passagem','tesouro','rotaBaixa','alvo']){
+for(const kind of ['ovo','jaula','barreira','raio','perigo','fagulha','fogo','poder','rota','selo','passagem','tesouro','rotaBaixa','alvo','escudo']){
   const model=objectModel(kind);inspect(model);disposeTree(model);
 }
 console.log('OK · 24 cenas, anatomia articulada, objetos de combate e descarte de geometrias.');
