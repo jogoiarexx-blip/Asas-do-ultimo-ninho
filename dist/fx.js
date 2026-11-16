@@ -85,6 +85,20 @@
       const [x,y]=position(p.x,p.y),a=Math.min(.75,Math.max(0,(p.life||0)*1.9));
       orb(x,y,1.2+(1-a)*2.8,p.col||'#ffe0a5',a);
     }
+    // Small telegraphs for archers, sentinels and charging brutes.
+    // These signals stay inside the already capped FX canvas and never affect hitboxes.
+    let signals=0;
+    for(const enemy of (run.entities||[])) {
+      if(signals>=12)break;
+      if(enemy.dead || enemy.ai?.state!=='windup')continue;
+      const [ex,ey]=position(enemy.x,enemy.y);
+      if(ex<0 || ex>width || ey<0 || ey>height)continue;
+      signals++;
+      const intensity=.45+.25*Math.sin(t*13+signals);
+      ring(ex,ey,enemy.kind==='bruto'?22:17,'#ffc475',intensity);
+      const [,aimY]=position(enemy.x,enemy.ai.aimY??enemy.y);
+      stroke(ex-35,aimY,30,'#ffbb84',.28,1.4);
+    }
     const boss=(run.entities||[]).find(e=>e.kind==='boss'&&!e.dead);
     if(boss){
       const [x,y]=position(boss.x,boss.y);
