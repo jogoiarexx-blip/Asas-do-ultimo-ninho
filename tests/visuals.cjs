@@ -77,8 +77,8 @@ t += 50;run.entities[0].state='recover';window.drawFlightEffects(run,{id:4,regio
 assert.equal(reused,effectCanvas,'Canvas should be reused between frames');
 window.resetFlightEffects();assert.equal(effectCanvas.hidden,true);
 const html=fs.readFileSync(path.join(dist,'index.html'),'utf8');
-assert.ok(html.includes('fx.js?v=0.7.6'));
-assert.equal((html.match(/\?v=0\.7\.6/g)||[]).length,11,'All CSS and script assets must bust previous cache');
+assert.ok(html.includes('fx.js?v=0.7.7'));
+assert.equal((html.match(/\?v=0\.7\.7/g)||[]).length,11,'All CSS and script assets must bust previous cache');
 const scripts=[...html.matchAll(/<script src="([^"?]+)/g)].map(m=>m[1]);
 for(const file of scripts) assert.ok(fs.existsSync(path.join(dist,file)),`Missing browser asset ${file}`);
 console.log(`OK: 18 dragon variants, ${modelTriangles} model triangles, 24 scenes, 6 layers, ${landmarkVertices} landmark vertices, animated combat effects and complete browser assets.`);
