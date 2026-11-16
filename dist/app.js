@@ -28,14 +28,49 @@ function tile(icon, label, title, sub) {
 function journal() {
   const n = selected, done = cardCount(save.medals), last = save.last;
   $("#stageLabel").textContent = "Fase " + pad(n) + " · " + TITLES[n - 1] + "　/　" + REALMS[Math.floor((n - 1) / 4)];
-  $("#journal").innerHTML = tile("map", "CAMPANHA", done + " de 24 fases", "Reino " + (Math.floor((n - 1) / 4) + 1) + " · " + REALMS[Math.floor((n - 1) / 4)]) + tile("egg", "RESGATES", cardCount(save.eggs) + " " + (cardCount(save.eggs) === 1 ? "ovo" : "ovos") + " · " + cardCount(save.babies) + " " + (cardCount(save.babies) === 1 ? "filhote" : "filhotes"), "Coleção do ninho") + tile("flag", "ÚLTIMO CHECKPOINT", last ? "Fase " + pad(last.id) + (last.type === "voo" ? " · " + last.t + " s" : " concluída") : "Início da jornada", last ? last.type === "voo" ? "Progresso de voo salvo" : "Retorno ao ninho" : "Vale das Cinzas");
+  const journalCards = $("#journal");
+  if (journalCards) journalCards.innerHTML = tile("map", "CAMPANHA", done + " de 24 fases", "Reino " + (Math.floor((n - 1) / 4) + 1) + " · " + REALMS[Math.floor((n - 1) / 4)]) + tile("egg", "RESGATES", cardCount(save.eggs) + " " + (cardCount(save.eggs) === 1 ? "ovo" : "ovos") + " · " + cardCount(save.babies) + " " + (cardCount(save.babies) === 1 ? "filhote" : "filhotes"), "Coleção do ninho") + tile("flag", "ÚLTIMO CHECKPOINT", last ? "Fase " + pad(last.id) + (last.type === "voo" ? " · " + last.t + " s" : " concluída") : "Início da jornada", last ? last.type === "voo" ? "Progresso de voo salvo" : "Retorno ao ninho" : "Vale das Cinzas");
   $("#launch span").textContent = save.cp ? "Continuar voo" : done ? "Iniciar fase " + pad(n) : "Iniciar aventura";
   paintIcons();
+}
+// O arquivo de salvamento continua sendo a fonte das duas telas de coleções.
+function journalUI() {
+  const completed = cardCount(save.medals);
+  const latest = save.last;
+  const savedFlight = !!save.cp;
+  $("#areaTitle").textContent = "Diário de jornada";
+  $("#areaContent").innerHTML =
+    '<div class="archive-lead"><div><div class="kicker">CRÔNICAS DOS SEIS REINOS</div><h2>A história das suas asas</h2><p>Missões, resgates e checkpoints registrados automaticamente durante a campanha.</p></div><span class="archive-status">● ' + (savedOK ? 'SALVAMENTO LOCAL' : 'SALVAMENTO INDISPONÍVEL') + '</span></div>' +
+    '<div class="cards" id="journal"></div>' +
+    '<div class="archive-section-heading"><h3>Progresso dos reinos</h3><span>' + completed + ' de 24 fases concluídas</span></div>' +
+    '<div class="archive-realms">' + REALMS.map((realm, idx) => {
+      const start = idx * 4 + 1;
+      const finished = Array.from({length: 4}, (_, j) => !!save.medals[start + j]).filter(Boolean).length;
+      return '<article class="archive-realm"><span>REINO ' + pad(idx + 1) + '</span><strong>' + realm + '</strong><div class="archive-progress"><i style="width:' + (finished * 25) + '%"></i></div><small>' + finished + ' de 4 fases</small></article>';
+    }).join('') + '</div>' +
+    '<div class="archive-section-heading"><h3>Registro atual</h3></div>' +
+    '<div class="archive-record"><div><span>ÚLTIMA ATIVIDADE</span><strong>' + (latest ? 'Fase ' + pad(latest.id) + (latest.type === 'voo' ? ' · ' + latest.t + ' s' : ' · concluída') : 'Início da aventura') + '</strong></div><div><span>VOO SALVO</span><strong>' + (savedFlight ? 'Fase ' + pad(save.cp.id) + ' · checkpoint disponível' : 'Nenhum checkpoint pendente') + '</strong></div><button class="ghost" data-page="mapa">Explorar o mapa</button></div>';
+  journal();
+}
+function bestiaryUI() {
+  const eggs = Object.values(save.eggs);
+  const babies = Object.values(save.babies);
+  const known = ([name]) => babies.includes(name) || eggs.some(egg => egg.species === name);
+  const species = Object.entries(DRAGONS);
+  const discovered = species.filter(known).length;
+  $("#areaTitle").textContent = "Bestiário";
+  $("#areaContent").innerHTML = '<div class="archive-lead"><div><div class="kicker">ATLAS DOS DRAGÕES</div><h2>Criaturas do Último Ninho</h2><p>Descubra novas espécies ao recolher ovos e libertar filhotes nas fases.</p></div><span class="archive-status">' + discovered + ' / ' + species.length + ' ESPÉCIES</span></div>' +
+    '<div class="bestiary-grid">' + species.map(([name, info], idx) => {
+      const found = known([name]);
+      const count = babies.filter(x => x === name).length;
+      const eggCount = eggs.filter(x => x.species === name).length;
+      return '<article class="bestiary-entry ' + (found ? 'discovered' : 'undiscovered') + '" style="--dragon-color:' + info.color + '"><div class="bestiary-art">' + (found ? '<img src="portraits/' + info.model + '.svg" alt="Dragão ' + name + '" loading="lazy">' : '<span aria-hidden="true">?</span>') + '</div><div class="bestiary-copy"><div class="kicker">ESPÉCIE ' + pad(idx + 1) + ' · ' + (found ? info.element : 'NÃO DESCOBERTA') + '</div><h3>' + (found ? 'Dragão ' + name : 'Criatura desconhecida') + '</h3><p>' + (found ? info.trait + ' · ' + info.role : 'Explore o próximo reino para conhecer esta espécie.') + '</p>' + (found ? '<p class="bestiary-power">' + info.power + '</p><small>' + count + ' no berçário · ' + eggCount + ' ovo(s) encontrados · ' + info.home + '</small>' : '<small>Informações reveladas após o primeiro resgate.</small>') + '</div></article>';
+    }).join('') + '</div><div class="bestiary-foot"><p>Os dragões descobertos ficam registrados mesmo quando você muda a equipe.</p><button class="ghost" data-page="ninho">Visitar o berçário</button></div>';
 }
 let closeNestView, hatchSequence = null, hatchTimer = 0;
 function leaveNest(){closeNestView?.();closeNestView=null}
 function showPage(name) {
-  if (!["jogar", "mapa", "ninho"].includes(name)) return;
+  if (!["jogar", "mapa", "ninho", "diario", "bestiario"].includes(name)) return;
   if (mode === "loading") {
     requestId++;
     mode = "menu";
@@ -46,10 +81,12 @@ function showPage(name) {
   page = name;
   $("#jogar").hidden = name !== "jogar";
   $("#area").hidden = name === "jogar";
-  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.page === name));
+  document.querySelectorAll("nav button").forEach((b) => { b.classList.toggle("active", b.dataset.page === name); b.setAttribute("aria-current", b.dataset.page === name ? "page" : "false"); });
   if (name === "jogar") journal();
   if (name === "mapa") mapUI();
   if (name === "ninho") nestUI();
+  if (name === "diario") journalUI();
+  if (name === "bestiario") bestiaryUI();
 }
 function home() {
   cancelAnimationFrame(raf);
@@ -84,7 +121,7 @@ async function startFlight(id, resume = false) {
   page = "jogar";
   $("#jogar").hidden = false;
   $("#area").hidden = true;
-  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.page === "jogar"));
+  document.querySelectorAll("nav button").forEach((b) => { b.classList.toggle("active", b.dataset.page === "jogar"); b.setAttribute("aria-current", b.dataset.page === "jogar" ? "page" : "false"); });
   $("#cover").hidden = true;
   game.hidden = false;
   $("#hud").hidden = true;
@@ -447,6 +484,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.1</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois. A versão 0.7.1 aumentou progressivamente os preços das construções e das habilidades, valorizando a exploração e os resgates.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
+  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.2</div><h2>Trilhas de Evolução</h2><p>O ninho agora apresenta três caminhos: ofensiva, proteção e mobilidade. As seis melhorias mostram níveis, custos, requisitos e o efeito antes/depois. A versão 0.7.1 aumentou progressivamente os preços das construções e das habilidades, valorizando a exploração e os resgates.</p><br><p>O escudo absorve impactos e recupera suas cargas. A reserva elemental aumenta a energia máxima; o fôlego ancestral acelera sua recuperação. Teste as melhorias no campo de treinamento.</p><br><p class="muted">Sopro, vida e velocidade adquiridos nas versões anteriores foram preservados. Cada voo guarda seus atributos no checkpoint; novas compras valem em outro voo ou ao reiniciar um exercício. O GDD completo continua no ZIP.</p><br>';
   $("#dialog").showModal();
 };
