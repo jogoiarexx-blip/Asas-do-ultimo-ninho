@@ -152,7 +152,7 @@ Ampliar a fase 03, Floresta das Brasas, com guardião intermediário e um resgat
 # v0.7.7 — Inteligência dos inimigos
 
 - **Batedores** perseguem o piloto em formação, mudam de altitude e podem desviar de projéteis próximos.
-- **Arqueiros** antecipam as trajetórias do jogador, anunciam disparos e travam o alvo antes de atirar.
+- **Arqueiros** anunciam os disparos, apontam para uma posição do jogador e travam a mira antes de atirar.
 - **Brutos** usam ataques em investida: preparação visível, aceleração controlada e recuperação.
 - **Sentinelas** mantêm faixas defensivas, anunciam ataques e disparam três projéteis em leque.
 - Táticas calculadas com atualização espaçada e estado serializável (`e.ai`), compatível com checkpoints antigos.
