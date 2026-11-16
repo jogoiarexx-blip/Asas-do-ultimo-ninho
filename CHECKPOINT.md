@@ -1,3 +1,31 @@
+# Checkpoint v0.7.5 · Chefes com aviso e barra de vida
+
+Os seis chefes (fases 04, 08, 12, 16, 20 e 24) agora apresentam indicadores de nome, vida e etapas, avisos antes dos golpes e janelas de contra-ataque. O Guardião das Cinzas mantém seus três padrões exclusivos; os outros encontros passam por leque de tiros, explosão e faixa horizontal conforme perdem vida. As três dificuldades e os salvamentos existentes foram preservados.
+
+Consulte [a auditoria](AUDITORIA_V0.7.5.md) e [as novidades](NOVIDADES_V0.7.5.md).
+
+---
+
+# Checkpoint v0.7.4 · Dragões na orientação correta e modo Normal reforçado
+
+# Asas do Último Ninho · atualização 0.7.4
+
+## Correções e melhorias
+- Dragões inimigos (batedores, arqueiros, brutos, sentinelas e chefes) espelhados no eixo horizontal, em vez de rotacionados 180° no eixo vertical. A cabeça fica voltada para a esquerda, sem ocultar o ventre e sem inverter o eixo vertical; as asas continuam animadas.
+- A correção está no código-fonte (`src/flight-view.js`) e no renderizador já compilado usado pelo GitHub Pages (`dist/vendor/flight-view.js`).
+- Modo Normal reequilibrado: inimigos comuns e chefes com +22% de fator de vida (arredondado para cima), movimento 14% mais rápido, projéteis 18% mais rápidos e intervalo médio entre disparos reduzido de 3,1 s para 2,45 s.
+- Modo Difícil aumentado proporcionalmente (vida x1,6, movimento x1,28, projéteis x1,32 e disparos a cada 1,95 s) para continuar mais exigente que o Normal. Modo Fácil mantém a base.
+- Padrões dos chefes: projéteis mais rápidos, menos tempo de recuperação e telegráficos ainda visíveis. Indicador de etapa 1/2/3 para todos os chefes.
+- Seis chefes já existentes e preservados: fases 4, 8, 12, 16, 20 e 24. Nenhuma fase ou chefe antigo removido.
+- Compatibilidade preservada com os checkpoints e salvamentos v1 (`ultimoNinho.save.v1`) e com o campo de treinamento.
+- HTML do deploy usa `?v=0.7.4` nos assets para evitar mistura de cache entre versões.
+
+## Testes
+Com Node.js: `node tests/campaign.cjs`, `node tests/exploration.cjs`, `node tests/companions.cjs`, `node tests/training.cjs`, `node tests/evolution.cjs` e `node tests/difficulty.cjs`.
+O teste 3D `tests/scene.mjs` precisa que o pacote `three` esteja instalado; não foi executado no ambiente de preparação sem acesso à internet. O motor compilado foi modificado cirurgicamente, mantendo o restante do bundle.
+
+---
+
 # Asas do Último Ninho · checkpoint 07
 
 **Versão 0.7.0 · Trilhas de Evolução · 16 de novembro de 2026**
