@@ -18,9 +18,17 @@ async function verify(){await vm.runInNewContext(source+`
  localStorage.setItem(SAVEKEY,JSON.stringify(legacy));save=loadSave();assert.deepEqual(save.up,{atk:2,energy:0,hp:3,def:0,speed:1,regen:0});assert.equal(save.scales,86);assert.equal(save.embers,9);
  assert.deepEqual(normalizeUpgrades({atk:9,hp:-1,def:1.5,energy:4}),{atk:4,energy:4,hp:0,def:0,speed:0,regen:0});
  save=freshSave();let before=JSON.stringify(save);assert.equal(purchaseUpgrade('atk'),false);assert.equal(purchaseUpgrade('__proto__'),false);assert.equal(JSON.stringify(save),before);
- save.scales=5;assert.equal(purchaseUpgrade('atk'),true);assert.equal(save.scales,0);assert.equal(save.up.atk,1);assert.equal(purchaseUpgrade('atk'),false);
+ assert.equal(upgradeCost('atk',0).scales,18);
+ assert.equal(upgradeCost('atk',3).scales,105);
+ assert.equal(upgradeCost('def',2).cores,1);
+ assert.equal(upgradeCost('energy',3).scales,190);
+ assert.equal(upgradeCost('regen',2).embers,8);
+ assert.deepEqual(nestUpgradeCost(1),{scales:25,cores:0});
+ assert.deepEqual(nestUpgradeCost(4),{scales:210,cores:3});
+ save.scales=17;assert.equal(purchaseUpgrade('atk'),false);assert.equal(save.scales,17);
+ save.scales=18;assert.equal(purchaseUpgrade('atk'),true);assert.equal(save.scales,0);assert.equal(save.up.atk,1);assert.equal(purchaseUpgrade('atk'),false);
  // Requirements are checked by the purchase function, not just by disabled buttons.
- save.scales=1000;save.embers=100;save.cores=20;
+ save.scales=5000;save.embers=100;save.cores=20;
  assert.equal(purchaseUpgrade('energy'),false);assert.ok(upgradeState('energy').missing.includes('Ninho nível 3'));
  save.nest=3;assert.equal(purchaseUpgrade('energy'),true);assert.equal(save.up.energy,1);assert.equal(purchaseUpgrade('regen'),false);
  assert.equal(purchaseUpgrade('speed'),true);assert.equal(purchaseUpgrade('regen'),true);
