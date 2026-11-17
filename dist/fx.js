@@ -78,7 +78,8 @@
       if(x<0||x>width||y<0||y>height)continue;
       const direction=Math.sign(b.vx||-1);
       stroke(x-direction*10,y,direction*10,'#ff8ca1',.28,1.6);
-      orb(x,y,2.1,'#ffc0a4',.47);
+      const hazardColors={thorn:'#b7e9a8',crystal:'#d7c7ff',frost:'#a4edff',lava:'#ff9876',shadow:'#e3b5f7',ember:'#ffd18a'};
+      orb(x,y,b.kind?3:2.1,hazardColors[b.kind]||'#ffc0a4',b.kind?.85:.47);
     }
     // Hits and pickups reuse the existing capped particle array.
     for(const p of (particles||[]).slice(-40)){
@@ -102,9 +103,34 @@
     const boss=(run.entities||[]).find(e=>e.kind==='boss'&&!e.dead);
     if(boss){
       const [x,y]=position(boss.x,boss.y);
+      const realmColors=['#ffb36d','#b6e1a0','#d9c6ff','#a5e9ff','#ff9675','#e0a5e5'];
+      const aura=realmColors[(level.id/4-1)|0]||'#ffe9bd';
+      // Weak spots are tied to actual boss armor hitboxes and disappear when destroyed.
+      for(const part of (boss.parts||[])) {
+        const [cx,cy]=position(boss.x-17,boss.y+part.offsetY);
+        if(part.broken){
+          ring(cx,cy,5,'#74636f',.42);
+          continue;
+        }
+        const pulse=Math.sin(t*8+(part.id==='upper'?0:Math.PI))*1.5;
+        ring(cx,cy,10+pulse,aura,.73);
+        orb(cx,cy,5.4,aura,.75);
+        const fraction=Math.max(0,part.hp/part.max);
+        stroke(cx-8,cy+13,16*fraction,'#fff0d4',.86,2.3);
+      }
+      if(boss.state==='transform') {
+        const pulse=(Math.sin(t*22)+1)*.5;
+        ring(x,y,34+pulse*16,aura,.65);
+        ring(x,y,51+pulse*14,'#fff4da',.19+pulse*.3);
+        for(let i=0;i<7;i++){
+          const theta=t*2+i*Math.PI*2/7;
+          orb(x+Math.cos(theta)*47,y+Math.sin(theta)*27,2.5,aura,.7);
+        }
+      }
+
       if(boss.state==='warning'){
         const pulse=(Math.sin(t*15)+1)/2;
-        ring(x,y,25+pulse*6,'#ffb76f',.5+pulse*.24);
+        ring(x,y,25+pulse*6,aura,.5+pulse*.24);
         ring(x,y,38+pulse*9,'#ff7f65',.15+pulse*.13);
       }else if(boss.state==='recover'){
         ring(x,y,31,'#9fe8bf',.43);
