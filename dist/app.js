@@ -488,6 +488,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">16 NOV 2026 · V0.7.7</div><h2>Dragões mais inteligentes</h2><p>Os batedores agora perseguem em formação e se esquivam. Arqueiros e sentinelas anunciam os disparos com um aviso visual e mantêm a mira travada para permitir sua esquiva. Brutos preparam investidas rápidas, seguidas de recuperação.</p><br><p>A IA é leve, mantém os modelos 3D e os seis chefes, respeita a dificuldade escolhida e conserva checkpoints antigos, companheiros e recompensas.</p><br><p class="muted">Os salvamentos e a progressão continuam compatíveis. O estilo gráfico leve foi mantido para computadores e celulares.</p>';
+  $("#dialogContent").innerHTML = '<div class="kicker">17 NOV 2026 · V0.7.8</div><h2>Os Seis Guardiões</h2><p>Os seis chefes receberam golpes próprios: brasas, espinhos, cristais, gelo, lava e sombras. Cada um possui dois núcleos de armadura brilhantes que você pode destruir mirando nas laterais do dragão.</p><br><p>Quebrar os núcleos causa dano adicional, enfraquece alguns padrões e reduz reforços. Ao perder vida, os chefes transformam sua aparência e entram numa breve animação antes de retomar os ataques.</p><br><p class="muted">Vida, dano, recompensas, progresso e checkpoints continuam compatíveis. Testes de campanha e combate fazem parte desta entrega.</p>';
   $("#dialog").showModal();
 };
