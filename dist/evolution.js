@@ -10,15 +10,15 @@ const UPGRADE_DEFS = {
 function normalizeUpgrades(up = {}) {
   return Object.fromEntries(Object.entries(UPGRADE_DEFS).map(([key, info]) => [key, Number.isInteger(up[key]) ? Math.min(info.max, Math.max(0, up[key])) : 0]));
 }
-function dragonStats(up = save.up, team = activeCompanions(), nest = save.nest, difficulty = save.difficulty) {
-  const v = normalizeUpgrades(up);
+function dragonStats(up = save.up, team = activeCompanions(), nest = save.nest, difficulty = save.difficulty, relics = equippedRelics()) {
+  const v = normalizeUpgrades(up), r = new Set(relics);
   return {
     hp: (difficulty === 'Fácil' ? 8 : difficulty === 'Difícil' ? 3 : 5) + v.hp * 2 + (team.includes('Cristalino') ? 2 : 0),
-    primary: 1 + v.atk + (team.includes('Rubro') ? 1 : 0), secondary: 1 + v.atk,
-    elemental: 4 + v.atk, fury: 10 + v.atk,
-    speed: 100 + v.speed * 12, dashCooldown: 2.4 - v.speed * .15,
-    energyMax: 100 + v.energy * 20, energyRegen: 7 + nest + v.regen * 2,
-    shieldMax: v.def >= 3 ? 2 : v.def ? 1 : 0, shieldDelay: [0, 16, 12, 10][v.def]
+    primary: 1 + v.atk + (team.includes('Rubro') ? 1 : 0) + Number(r.has('4')), secondary: 1 + v.atk,
+    elemental: 4 + v.atk + (r.has('20') ? 2 : 0), fury: 10 + v.atk,
+    speed: 100 + v.speed * 12, dashCooldown: Math.max(1.2, 2.4 - v.speed * .15 - (r.has('16') ? .25 : 0)),
+    energyMax: 100 + v.energy * 20, energyRegen: 7 + nest + v.regen * 2, furyRegen: .8 + (r.has('24') ? .7 : 0),
+    shieldMax: (v.def >= 3 ? 2 : v.def ? 1 : 0) + Number(r.has('12')), shieldDelay: v.def ? [0, 16, 12, 10][v.def] : r.has('12') ? 16 : 0,
   };
 }
 // Economia v0.7.1: custos crescentes, iguais no painel e na validação da compra.
