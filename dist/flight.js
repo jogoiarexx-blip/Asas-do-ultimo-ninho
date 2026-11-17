@@ -161,6 +161,93 @@ function hurt() {
   note(120, 0.19, "sawtooth", 0.04, 0, 45);
   if (p.hp <= 0) endFlight(false);
 }
+// v0.7.8: six boss identities, two breakable armor cores and readable phase transformations.
+const BOSS_PROFILES = Object.freeze({
+  4: { name:'Guardião das Cinzas', color:'#ffb36d', attacks:['Rajada de brasas','Leque incandescente','Explosão de cinzas'], feature:'Minas de brasa' },
+  8: { name:'Rainha das Raízes', color:'#b6e1a0', attacks:['Sementes espinhosas','Vinhas em expansão','Esporos ancestrais'], feature:'Espinhos que cercam o piloto' },
+  12:{ name:'Colosso de Cristal', color:'#d9c6ff', attacks:['Lanças prismáticas','Refração cortante','Estilhaços cruzados'], feature:'Estilhaços diagonais' },
+  16:{ name:'Dragão Ancestral do Gelo', color:'#a5e9ff', attacks:['Sopro glacial','Nevasca concentrada','Lanças congelantes'], feature:'Projéteis gelados' },
+  20:{ name:'Senhor das Chamas', color:'#ff9675', attacks:['Bombas de lava','Erupção vulcânica','Coroa de fogo'], feature:'Lava em trajetórias curvas' },
+  24:{ name:'Senhor do Eclipse', color:'#e0a5e5', attacks:['Sombras errantes','Ecos do vazio','Convergência do eclipse'], feature:'Sombras cruzadas' }
+});
+function bossPhase(e) { return e.hp / e.max < .33 ? 2 : e.hp / e.max < .66 ? 1 : 0; }
+function ensureBossArmor(e) {
+  if (e.kind !== 'boss' || e.dead) return;
+  if (!Array.isArray(e.parts)) {
+    const life = Math.max(3, Math.ceil(e.max * .13));
+    e.parts = [{id:'upper', hp:life, max:life, offsetY:-21, broken:false},
+               {id:'lower', hp:life, max:life, offsetY: 21, broken:false}];
+  }
+  // Old saves from v0.7.7 enter with the same boss HP and receive intact armor.
+  e.phase ??= bossPhase(e);
+  e.wave ??= 0;
+}
+function startBossTransform(e,previousPhase) {
+  const next = bossPhase(e);
+  if (next <= previousPhase || e.dead) return;
+  e.phase = next;
+  e.state = 'transform';
+  e.transformLeft = .9;
+  e.telegraphLeft = 0;
+  e.cool = 1.05;
+  burst(e.x, e.y, BOSS_PROFILES[level.id]?.color || '#fff1cc', 26);
+  note(180 + next * 100, .22, 'triangle', .035, 0, 650);
+}
+function transformingBoss(e,dt) {
+  if (e.state !== 'transform') return false;
+  e.transformLeft = Math.max(0, (e.transformLeft || 0) - dt);
+  if (e.transformLeft === 0) { e.state = 'idle'; e.cool = .75; }
+  return true;
+}
+function strikeBossArmor(e,part,dmg) {
+  if (!part || part.broken || e.dead) return false;
+  ensureBossArmor(e);
+  const before = bossPhase(e);
+  part.hp = Math.max(0,part.hp-dmg);
+  burst(e.x-17,e.y+part.offsetY,BOSS_PROFILES[level.id]?.color || '#ffddb8',5);
+  if (part.hp <= 0) {
+    part.broken = true;
+    const prize = Math.max(1,Math.ceil(e.max * .075));
+    e.hp -= prize;
+    run.p.fury = Math.min(100,run.p.fury+9);
+    burst(e.x-17,e.y+part.offsetY,'#fff0c7',26);
+    note(310,.16,'triangle',.04,0,770);
+    if(e.hp <= 0) strike(e,Math.max(1,-e.hp+1));
+    else startBossTransform(e,before);
+  }
+  return true;
+}
+function livingBossArmor(e) { return (e.parts || []).filter(part=>!part.broken).length; }
+function addBossBullet(e,vx,vy,offsetY=0,kind='special') {
+  if(run.bullets.length>=90) return;
+  run.bullets.push({x:e.x-15,y:bound(e.y+offsetY,19,203),vx,vy,kind});
+}
+// Extra attacks only fire after the telegraph; each realm has a separate pattern.
+function realmBossVolley(e,phase,speed,aimY) {
+  const armor = livingBossArmor(e);
+  const wave = e.wave || 0;
+  if (run.bullets.length > 82) return;
+  switch (level.id) {
+    case 4: // Cinders travel slower and leave open corridors for dodging.
+      if (phase > 0) for(const dy of [-27,27].slice(0,armor)) addBossBullet(e,-speed*.56,0,dy,'ember');
+      break;
+    case 8: // Roots close in from both sides without targeting a moving player after warning.
+      for(const sign of [-1,1].slice(0,1+(armor>0))) addBossBullet(e,-speed*.71,sign*24,sign*12,'thorn');
+      break;
+    case 12: // Refracted crystal shards cross after the main salvo.
+      for(const sign of [-1,1]) addBossBullet(e,-speed*(.7+.08*phase),sign*(20+phase*5),sign*22,'crystal');
+      break;
+    case 16: // Frozen projectiles drain a little energy when they actually hit.
+      for(const offset of [0,phase>0?20:-20].slice(0,armor||1)) addBossBullet(e,-speed*.82,0,offset,'frost');
+      break;
+    case 20: // Lava rises and falls; phase three adds a third curved fireball.
+      for(let i=0;i<(armor>0&&phase===2?3:2);i++) addBossBullet(e,-speed*(.62+i*.08),(i%2?30:-30),i*14-14,'lava');
+      break;
+    case 24: // Shadow crossfire: two converging projectiles from different heights.
+      for(const sign of [-1,1]) addBossBullet(e,-speed*(.75+.08*phase),-sign*(22+phase*5),sign*26,'shadow');
+      break;
+  }
+}
 function strike(e, dmg) {
   if (e.dead || ['filhote', 'ovo', 'raio', 'rota', 'passagem', 'tesouro'].includes(e.kind)) return;
   const dealt = e.kind === 'boss' && e.state === 'recover' ? dmg * (level.id === 4 ? 1.4 : 1.2) : dmg;
@@ -168,9 +255,10 @@ function strike(e, dmg) {
     run.training.damage += Math.min(Math.max(0, e.hp), dealt);
     run.training.damageStarted ??= run.t;
   }
+  const previousPhase = e.kind === 'boss' ? bossPhase(e) : -1;
   e.hp -= dealt;
   burst(e.x - 3, e.y, "#ffd39a", 3);
-  if (e.hp > 0) return;
+  if (e.hp > 0) { if(e.kind === 'boss') startBossTransform(e,previousPhase); return; }
   if (e.kind === 'selo') {
     e.kind = 'passagem'; e.hp = 1;
     explorationNotice('Selo rompido · Encoste no arco verde antes que a passagem se feche.');
@@ -208,6 +296,8 @@ function enemyFire(e, n = 1, spread = 0.2, velocity = 75) {
   enemyFireAt(e, run.p.x, run.p.y, n, spread, velocity);
 }
 function ashGuardianAct(e, dt) {
+  ensureBossArmor(e);
+  if (transformingBoss(e,dt)) return;
   e.state ??= "idle";
   e.cool ??= 1.15;
   e.x = Math.max(379, e.x - dt * 45);
@@ -226,6 +316,7 @@ function ashGuardianAct(e, dt) {
       } else {
         enemyFireAt(e, e.aimX, e.aimY, 7, 0.19, speed + 5);
       }
+      realmBossVolley(e,e.phase,speed,e.aimY);
       e.state = "recover";
       e.recover = 1.15;
       e.telegraphLeft = 0;
@@ -258,7 +349,9 @@ function ashGuardianAct(e, dt) {
 // All six bosses share a readable, checkpoint-safe warning -> volley -> recovery cycle.
 // Their projectile patterns and summons still differ by realm.
 function bossAct(e, dt) {
+  ensureBossArmor(e);
   if (level.id === 4) { ashGuardianAct(e, dt); return; }
+  if (transformingBoss(e,dt)) return;
   const region = level.region;
   e.x = Math.max(379, e.x - dt * 45);
   e.phase = e.hp / e.max < 0.33 ? 2 : e.hp / e.max < 0.66 ? 1 : 0;
@@ -273,7 +366,7 @@ function bossAct(e, dt) {
     const aimX = e.aimX ?? run.p.x, aimY = e.aimY ?? run.p.y;
     if (e.pattern === 'lane') {
       // Parallel projectiles match the bright horizontal warning line.
-      const count = phase === 2 ? 5 : 3;
+      const count = Math.max(3,(phase === 2 ? 5 : 3) - (2 - livingBossArmor(e)));
       for (let i = 0; i < count; i++) run.bullets.push({
         x: e.x - 15, y: bound(aimY + (i - (count - 1) / 2) * 9, 18, 205),
         vx: -speed, vy: 0
@@ -284,10 +377,11 @@ function bossAct(e, dt) {
       const shotCount = [3, 4, 5][phase] + (region === 5 ? 2 : 0);
       enemyFireAt(e, aimX, aimY, shotCount, region === 1 ? .31 : .22, speed);
     }
+    realmBossVolley(e,phase,speed,aimY);
     // Region-specific reinforcements make each boss distinct.
-    if (region === 1 && e.wave % 2 === 0) run.entities.push(entity('batedor', bound(e.y + 20, 22, 202), -e.wave));
+    if (region === 1 && e.wave % 2 === 0 && livingBossArmor(e) > 0) run.entities.push(entity('batedor', bound(e.y + 20, 22, 202), -e.wave));
     if (region === 4 && e.wave % 2 === 0) run.entities.push(entity('raio', aimY, -e.wave));
-    if (region === 5) {
+    if (region === 5 && livingBossArmor(e) > 0) {
       if (phase > 0 && e.wave % 3 === 0) run.entities.push(entity('raio', aimY, -e.wave));
       if (phase === 2 && e.wave % 2 === 0) run.entities.push(entity('arqueiro', bound(e.y + 15, 22, 202), -e.wave));
     }
@@ -513,6 +607,12 @@ function update(dt) {
     s.y += s.vy * dt;
     for (const e of run.entities) {
       if (e.dead || ["raio", "ovo", "filhote", "rota", "passagem", "tesouro"].includes(e.kind)) continue;
+      if (e.kind === 'boss') {
+        ensureBossArmor(e);
+        const weakspot = e.parts.find(part=>!part.broken &&
+          Math.abs((e.x-17)-s.x)<12 && Math.abs((e.y+part.offsetY)-s.y)<11);
+        if (weakspot) { strikeBossArmor(e,weakspot,s.d); s.dead=true; break; }
+      }
       if (Math.abs(e.x - s.x) < (e.kind === "boss" ? 31 : 12) && Math.abs(e.y - s.y) < (e.kind === "boss" ? 19 : e.kind === "barreira" ? 23 : 9)) {
         strike(e, s.d);
         s.dead = true;
@@ -528,7 +628,9 @@ function update(dt) {
       if (isTraining() && b.training && p.dash > 0) {
         run.training.dodges++; run.training.note = 'Esquiva bem cronometrada!'; run.training.noteUntil = run.t + 2;
       }
+      const vulnerable = p.inv <= 0 && p.dash <= 0;
       hurt();
+      if (vulnerable && b.kind === 'frost') p.energy = Math.max(0,p.energy-9);
       if (mode !== "flight") return;
     }
   }
@@ -559,6 +661,7 @@ function missionTip() {
   }
   if (level.id === 4) {
     const boss = run.entities.find(e => e.kind === "boss" && !e.dead);
+    if (boss?.state === 'transform') return 'O Guardião evoluiu! Ataque os pontos brilhantes nas asas para quebrar a armadura.';
     if (boss?.state === "warning") {
       if (boss.pattern === "lane") return "Guardião prepara a rajada linear · Suba ou desça para sair da faixa iluminada.";
       if (boss.pattern === "fan") return "Guardião prepara o leque de cinzas · Mude de altitude e use a esquiva.";
@@ -571,7 +674,8 @@ function missionTip() {
   }
   if (level.boss && run.bossSent && level.id !== 4) {
     const boss = run.entities.find(e => e.kind === 'boss' && !e.dead);
-    if (boss?.state === 'warning') return 'ATAQUE IMINENTE · A faixa luminosa indica o próximo disparo. Esquive-se antes do impacto!';
+    if (boss?.state === 'transform') return 'TRANSFORMAÇÃO · O chefe está mudando de forma! Prepare sua defesa.';
+    if (boss?.state === 'warning') return (BOSS_PROFILES[level.id]?.attacks[boss.phase] || 'Ataque especial') + ' · Mire nos dois pontos brilhantes da armadura para enfraquecê-lo!';
     if (boss?.state === 'recover') return 'Chefão exposto · Aproveite para atacar enquanto ele recupera o fôlego.';
     if (boss) return 'ETAPA ' + ((boss.phase ?? 0) + 1) + '/3 · Reaja ao aviso luminoso e use sua Fúria no momento certo.';
   }
@@ -615,13 +719,15 @@ function draw() {
       const names = {4:'Guardião das Cinzas',8:'Rainha das Raízes',12:'Colosso de Cristal',16:'Dragão Ancestral do Gelo',20:'Senhor das Chamas',24:'Senhor do Eclipse'};
       const ratio = bound(boss.hp / boss.max, 0, 1);
       const percent = Math.round(ratio * 100);
-      const status = boss.state === 'warning' ? 'PREPARE A ESQUIVA' : boss.state === 'recover' ? 'ABERTURA PARA ATACAR' : 'CONFRONTO';
+      const profile = BOSS_PROFILES[level.id];
+      const status = boss.state === 'transform' ? 'TRANSFORMAÇÃO!' : boss.state === 'warning' ? profile?.attacks[boss.phase] || 'PREPARE A ESQUIVA' : boss.state === 'recover' ? 'ABERTURA PARA ATACAR' : 'CONFRONTO';
       document.querySelector('#bossHealthName').textContent = names[level.id] || 'Chefe';
-      document.querySelector('#bossHealthStage').textContent = 'ETAPA ' + ((boss.phase ?? 0) + 1) + '/3 · ' + status;
+      document.querySelector('#bossHealthStage').textContent = 'ETAPA ' + ((boss.phase ?? 0) + 1) + '/3 · ' + status + ' · ARMADURA ' + livingBossArmor(boss) + '/2';
       document.querySelector('#bossHealthFill').style.width = percent + '%';
       bossHealth.setAttribute('aria-label', (names[level.id] || 'Chefe') + ', etapa ' + ((boss.phase ?? 0) + 1) + ', ' + percent + '% de vida');
       bossHealth.classList.toggle('warning', boss.state === 'warning');
       bossHealth.classList.toggle('recover', boss.state === 'recover');
+      bossHealth.classList.toggle('transform', boss.state === 'transform');
     }
   }
   const progress=document.querySelector('#routeProgress');
