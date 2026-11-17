@@ -95,8 +95,14 @@ export class FlightView{
         const intensity=e.kind==='boss' ? 1.35 : e.kind==='batedor' ? 1.18 : .92;
         animateDragon(m,t+e.serial*.23,0,intensity);
         if(e.kind==='boss') {
-          const pulse=e.state==='warning'?1.055+Math.sin(t*19)*.035:e.state==='recover'?.97:1;
-          m.scale.set(-1.77*pulse,1.77*pulse,1.77*pulse);
+          const phase=Math.max(0,Math.min(2,e.phase||0));
+          const morph=e.state==='transform' ? 1.06+Math.sin(t*24)*.085 : 1;
+          const pulse=e.state==='warning' ? 1.055+Math.sin(t*19)*.035 : e.state==='recover'?.97:1;
+          const magnitude=1.77*(1+phase*.095)*morph*pulse;
+          m.scale.set(-magnitude,magnitude,magnitude);
+          m.rotation.z+=Math.sin(t*(3+phase))*.03*phase;
+          const crest=m.getObjectByName('battleCrest');
+          if(crest)crest.visible=!Array.isArray(e.parts)||e.parts.some(part=>!part.broken);
         }
       }
       else if(e.kind==='ovo'){m.rotation.y=t*1.4;m.position.y+=Math.sin(t*3.3)*1.5}
