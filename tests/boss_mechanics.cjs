@@ -2,7 +2,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const dir=path.resolve(__dirname,'../dist');
-const code=['catalog','dragons','evolution','save','art','flight','training','app'].map(x=>fs.readFileSync(path.join(dir,x+'.js'),'utf8')).join('\n');
+const code=['catalog','dragons','relics','evolution','save','art','flight','training','app'].map(x=>fs.readFileSync(path.join(dir,x+'.js'),'utf8')).join('\n');
 const noop=()=>{},elements=new Map(),storage=new Map();
 const node=k=>{if(!elements.has(k))elements.set(k,{style:{},dataset:{},classList:{toggle:noop,add:noop,remove:noop},getContext:()=>({}),setAttribute:noop,addEventListener:noop,showModal:noop,close:noop});return elements.get(k)};
 const sandbox={assert,console,performance,document:{querySelector:node,getElementById:node,querySelectorAll:()=>[],addEventListener:noop},window:{addEventListener:noop},location:{protocol:'https:'},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},setTimeout:noop,clearTimeout:noop,requestAnimationFrame:noop,cancelAnimationFrame:noop};
