@@ -182,3 +182,8 @@ Ampliar a fase 03, Floresta das Brasas, com guardião intermediário e um resgat
 - Nove suítes de testes Node sem dependências externas foram executadas localmente e passaram, incluindo combate, progressão, IA, cenas compiladas e pontos de armadura. A suíte de cena que importa a biblioteca `three` exige `npm ci` no GitHub Actions.
 - Validação visual no Chromium ficou bloqueada pelo ambiente, portanto a execução no GitHub Pages ainda precisa ser conferida.
 
+
+
+## v0.7.9 — Relíquias dos Seis Guardiões
+
+Adicionado o Relicário permanente com seis tesouros exclusivos, um por chefe. O primeiro espaço está disponível desde o início, o segundo no nível 4 do Ninho. Bônus distintos de ataque, cura, escudo, esquiva, dano elemental e Fúria. Recompensa única, migração de salvamentos antigos, proteção do checkpoint e dez suítes de testes locais concluídas. Consulte `NOVIDADES_V0.7.9.md`.
