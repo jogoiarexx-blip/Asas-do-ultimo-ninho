@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const dist=path.resolve(__dirname,'../dist');
-const code=['catalog','dragons','evolution','save','art','flight','training','app'].map(n=>fs.readFileSync(path.join(dist,n+'.js'),'utf8')).join('\n');
+const code=['catalog','dragons','relics','evolution','save','art','flight','training','app'].map(n=>fs.readFileSync(path.join(dist,n+'.js'),'utf8')).join('\n');
 const nodes=new Map(),storage=new Map();
 const noop=()=>{};
 function node(id) { if(!nodes.has(id)) nodes.set(id,{style:{},dataset:{},classList:{add:noop,remove:noop,toggle:noop},setAttribute:noop,addEventListener:noop,getContext:()=>({}),showModal:noop,close:noop});return nodes.get(id); }
