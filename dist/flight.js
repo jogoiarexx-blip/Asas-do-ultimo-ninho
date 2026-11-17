@@ -10,14 +10,17 @@ function flightTeam() { return run?.companions || activeCompanions(); }
 function hasFlightCompanion(name) { return flightTeam().includes(name); }
 function flightStats() { return run?.stats || dragonStats(run?.upgrades || save.up, flightTeam()); }
 function flightUpgrades() { return run?.upgrades || save.up; }
+function hasFlightRelic(id) { return !!run?.relics?.includes(String(id)); }
 function initializeFlightBuild() {
   run.upgrades ??= normalizeUpgrades(save.up);
-  run.stats ??= dragonStats(run.upgrades, flightTeam());
+  // A checkpoint from earlier versions must not silently receive equipment mid-flight.
+  run.relics ??= run.stats ? [] : [...equippedRelics()];
+  run.stats ??= dragonStats(run.upgrades, flightTeam(), save.nest, save.difficulty, run.relics);
   run.p.shield ??= run.stats.shieldMax; run.p.shieldClock ??= 0; run.blocks ??= 0;
 }
 function freshRun() {
-  const companions = [...activeCompanions()], upgrades = normalizeUpgrades(save.up), stats = dragonStats(upgrades, companions);
-  return { companions, upgrades, stats, t: 0, event: 0, p: { x: 85, y: 111, hp: stats.hp, inv: 1, dash: 0, cool: 0, fire: 0, energy: stats.energyMax, fury: 0, power: 0, shield: stats.shieldMax, shieldClock: 0 }, entities: [], bullets: [], shots: [], kills: 0, hits: 0, blocks: 0, loot: 0, bossSent: false, wonBoss: false, eggs: [], babies: [], beat: -1, ancient: !!save.medals[24] };
+  const companions = [...activeCompanions()], upgrades = normalizeUpgrades(save.up), relics = [...equippedRelics()], stats = dragonStats(upgrades, companions, save.nest, save.difficulty, relics);
+  return { companions, upgrades, relics, stats, t: 0, event: 0, p: { x: 85, y: 111, hp: stats.hp, inv: 1, dash: 0, cool: 0, fire: 0, energy: stats.energyMax, fury: 0, power: 0, shield: stats.shieldMax, shieldClock: 0 }, entities: [], bullets: [], shots: [], kills: 0, hits: 0, blocks: 0, loot: 0, bossSent: false, wonBoss: false, eggs: [], babies: [], beat: -1, ancient: !!save.medals[24] };
 }
 // Optional, serializable state: old checkpoints acquire exploration without a reset.
 function explorationState() {
@@ -505,7 +508,7 @@ function update(dt) {
     while (p.shield < stats.shieldMax && p.shieldClock >= stats.shieldDelay) { p.shield++; p.shieldClock -= stats.shieldDelay; }
     if (p.shield === stats.shieldMax) p.shieldClock = 0;
   }
-  p.fury = Math.min(100, p.fury + dt * 0.8);
+  p.fury = Math.min(100, p.fury + dt * (stats.furyRegen ?? .8));
   const axis = (a, b, c, d) => Number(keys.has(a) || keys.has(b)) - Number(keys.has(c) || keys.has(d));
   let dx = axis("ArrowRight", "KeyD", "ArrowLeft", "KeyA"), dy = axis("ArrowDown", "KeyS", "ArrowUp", "KeyW");
   let l = Math.max(1, Math.hypot(dx, dy)), speed = stats.speed;
@@ -549,6 +552,7 @@ function update(dt) {
   if (beat !== run.beat) {
     run.beat = beat;
     if (beat && hasFlightCompanion('Verde') && beat % 3 === 0) p.hp = Math.min(stats.hp, p.hp + 1);
+    if (beat && beat % 6 === 0 && hasFlightRelic('8')) p.hp = Math.min(stats.hp, p.hp + 1);
     if (beat) for (const name of flightTeam()) if (['Tempestade', 'Sombrio'].includes(name)) {
       for (const e of run.entities.filter(e => !e.dead && hostile(e)).slice(0, 2)) strike(e, name === 'Sombrio' ? 3 : 2);
     }
