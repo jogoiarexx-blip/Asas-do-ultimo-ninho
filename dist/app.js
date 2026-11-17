@@ -211,6 +211,7 @@ function endFlight(won) {
     save.scales += scales;
     save.embers += level.boss ? 4 : 1;
     save.cores += level.boss ? 1 : 0;
+    const newRelic = level.boss && run.wonBoss && grantRelic(id);
     for (const egg of Object.values(save.eggs)) if (!egg.hatched) egg.left = Math.max(0, egg.left - 1);
     if (id === 24) {
       save.nest = 5;
@@ -228,7 +229,7 @@ function endFlight(won) {
     writeSave();
     chime();
     const explorationSummary = level.exploration ? ' Rota: ' + level.exploration.names[run.exploration.path || 'main'] + (run.exploration.route === 'secret' ? ' + Câmara dos Ecos' : '') + ' · ' + run.exploration.rewards.length + ' tesouro(s) encontrado(s) · ' + run.exploration.bonus + ' escamas de exploração já guardadas.' : '';
-    overlay((run.ancient ? "DESAFIO ANCESTRAL" : "FASE " + pad(id)) + " · " + rank.toUpperCase(), id === 24 ? "Grande Ninho restaurado!" : "Missão concluída!", (id === 24 ? "O Eclipse caiu. As fases do mapa agora têm desafios ancestrais. " : "") + "+" + scales + " escamas · " + run.eggs.length + "/" + level.eggs + " ovos · " + run.babies.length + "/" + level.babies + " filhotes." + explorationSummary, id === 24 ? [["Visitar ninho", "nest"], ["Ver mapa", "map"]] : [["Próxima fase", "next"], ["Visitar ninho", "nest"]]);
+    overlay((run.ancient ? "DESAFIO ANCESTRAL" : "FASE " + pad(id)) + " · " + rank.toUpperCase(), id === 24 ? "Grande Ninho restaurado!" : "Missão concluída!", (id === 24 ? "O Eclipse caiu. As fases do mapa agora têm desafios ancestrais. " : "") + "+" + scales + " escamas · " + run.eggs.length + "/" + level.eggs + " ovos · " + run.babies.length + "/" + level.babies + " filhotes." + (newRelic ? ' NOVA RELÍQUIA: ' + RELIC_DEFS[id].name + '! Equipe no Ninho.' : '') + explorationSummary, id === 24 ? [["Visitar ninho", "nest"], ["Ver mapa", "map"]] : [["Próxima fase", "next"], ["Visitar ninho", "nest"]]);
     $("#ready").textContent = "MISSÃO CONCLUÍDA";
   } else {
     note(150, 0.45, "triangle", 0.07, 0, 50);
@@ -279,6 +280,16 @@ function nurseryUI() {
     return '<article class="dragon-card ' + (count ? '' : 'undiscovered') + '" style="--dragon-color:' + info.color + '"><div class="dragon-portrait"><img src="portraits/' + info.model + '.svg" width="174" height="120" alt="Dragão ' + name + '" loading="lazy"><span>' + info.element + '</span></div><div class="dragon-card-body"><div class="kicker">' + info.role + '</div><h4>Dragão ' + name + '</h4><p>' + info.power + '</p><small>' + info.trait + ' · ' + info.home + '</small><div class="dragon-count">' + count + ' no berçário' + (eggs ? ' · ' + eggs + ' ovo(s) em incubação' : '') + '</div><button class="' + (equipped ? 'ghost' : 'gold') + '" data-equip="' + name + '" aria-pressed="' + equipped + '" ' + (!count || !capacity || full ? 'disabled' : '') + '>' + label + '</button></div></article>';
   }).join('') + '</div></section>';
 }
+function relicUI() {
+  const slots = relicSlots(save), selected = equippedRelics(), owned = RELIC_IDS.filter(id => save.relics?.[id]).length;
+  return '<section class="reliquary"><div class="reliquary-title"><div><div class="kicker">SALA DOS GUARDIÕES · EQUIPAMENTOS RAROS</div><h3>Relicário do Último Ninho</h3><p>Vença os chefes das fases 4, 8, 12, 16, 20 e 24 para ganhar suas relíquias, uma única vez. As habilidades equipadas começam no próximo voo.</p></div><span class="archive-status">' + owned + '/6 · ' + selected.length + '/' + slots + ' equipadas</span></div>' +
+    '<div class="relic-slots"><strong>Espaços de relíquia:</strong> ' + Array.from({length:slots},(_,i)=>'<span class="relic-slot">' + (RELIC_DEFS[selected[i]]?.name || '◇ Vazio') + '</span>').join('') + (slots < 2 ? '<small>O segundo espaço abre no Ninho nível 4.</small>' : '') + '</div>' +
+    '<div class="relic-grid">' + RELIC_IDS.map(id => {
+      const item = RELIC_DEFS[id], unlocked = !!save.relics?.[id], active = selected.includes(id), full = !active && selected.length >= slots;
+      const label = !unlocked ? 'Conclua a fase ' + String(id).padStart(2,'0') : active ? 'Retirar relíquia' : full ? 'Espaços ocupados' : 'Equipar relíquia';
+      return '<article class="relic-card ' + (unlocked ? 'obtained' : 'locked') + '" style="--relic-color:' + item.color + '"><div class="relic-art" aria-hidden="true">' + (unlocked ? item.icon : '？') + '</div><div class="relic-copy"><span>CHEFE DA FASE ' + String(id).padStart(2,'0') + ' · ' + item.kind.toUpperCase() + '</span><h4>' + (unlocked ? item.name : 'Relíquia desconhecida') + '</h4><p>' + (unlocked ? item.power : 'Derrote ' + item.boss + ' para revelar este tesouro.') + '</p><button class="' + (active ? 'ghost' : 'gold') + '" data-relic="' + id + '" aria-pressed="' + active + '" ' + (!unlocked || full ? 'disabled' : '') + '>' + label + '</button></div></article>';
+    }).join('') + '</div></section>';
+}
 function nestUI() {
   const e = Object.entries(save.eggs), b = Object.values(save.babies), ready = e.filter(([, x]) => !x.hatched && x.left === 0).length;
   $("#areaTitle").textContent = "O ninho";
@@ -289,7 +300,7 @@ function nestUI() {
     const coreLabel = price.cores ? " + " + price.cores + (price.cores === 1 ? " núcleo" : " núcleos") : "";
     content += "<p>Próxima construção · " + nestNames[save.nest + 1] + '</p><button class="ghost" data-buy="nest" ' + (lacking ? "disabled" : "") + ">Construir · " + price.scales + " escamas" + coreLabel + "</button>" + (lacking ? '<small class="skill-shortfall">' + (save.scales < price.scales ? 'Faltam ' + (price.scales - save.scales) + ' escamas' : '') + (save.cores < price.cores ? (save.scales < price.scales ? ' · ' : '') + 'Faltam ' + (price.cores - save.cores) + ' núcleos' : '') + '</small>' : '');
   }
-  content += '</div>' + evolutionUI() + '<div class="grid"><div class="box"><div class="kicker">OVOS</div><h3>Incubadora</h3><p>' + ready + ' prontos para nascer. A incubação avança ao concluir missões.</p><button class="ghost" data-act="hatch" ' + (!ready || save.nest < 2 ? "disabled" : "") + ">" + (save.nest < 2 ? "Requer ninho nível 2" : "Chocar ovos") + '</button></div><div class="box"><div class="kicker">FILHOTES · ' + b.length + "</div><h3>Berçário</h3><p>" + (b.length ? "Consulte as espécies e monte a equipe abaixo." : "Quebre as jaulas e toque nos filhotes para resgatá-los.") + "</p>" + '</div><div class="box"><div class="kicker">CAMPANHA</div><h3>Dificuldade</h3><p>Vale a partir do próximo voo iniciado.</p><select aria-label="Dificuldade" id="difficulty" ' + (save.cp ? "disabled" : "") + ">" + ["Fácil", "Normal", "Difícil"].map((d) => "<option " + (save.difficulty === d ? "selected" : "") + ">" + d + "</option>").join("") + "</select></div></div>";
+  content += '</div>' + relicUI() + evolutionUI() + '<div class="grid"><div class="box"><div class="kicker">OVOS</div><h3>Incubadora</h3><p>' + ready + ' prontos para nascer. A incubação avança ao concluir missões.</p><button class="ghost" data-act="hatch" ' + (!ready || save.nest < 2 ? "disabled" : "") + ">" + (save.nest < 2 ? "Requer ninho nível 2" : "Chocar ovos") + '</button></div><div class="box"><div class="kicker">FILHOTES · ' + b.length + "</div><h3>Berçário</h3><p>" + (b.length ? "Consulte as espécies e monte a equipe abaixo." : "Quebre as jaulas e toque nos filhotes para resgatá-los.") + "</p>" + '</div><div class="box"><div class="kicker">CAMPANHA</div><h3>Dificuldade</h3><p>Vale a partir do próximo voo iniciado.</p><select aria-label="Dificuldade" id="difficulty" ' + (save.cp ? "disabled" : "") + ">" + ["Fácil", "Normal", "Difícil"].map((d) => "<option " + (save.difficulty === d ? "selected" : "") + ">" + d + "</option>").join("") + "</select></div></div>";
   content += '<div class="box training-entry"><div><div class="kicker">NINHO · PRÁTICA</div><h3>Campo de treinamento</h3><p>Teste o sopro, os poderes e a dupla. Alvos fixos, mira em movimento e esquiva, sem gastar recursos. O voo da campanha continua guardado.</p></div><button class="gold" data-act="trainingStart" ' + (save.nest < 3 ? 'disabled' : '') + '>' + (save.nest < 3 ? 'Requer ninho nível 3' : 'Entrar no campo') + '</button></div>';
   content += nurseryUI();
   const discoveries = save.exploration || { rewards: {}, routes: {} };
@@ -379,6 +390,14 @@ document.addEventListener("click", (ev) => {
     startFlight(+d.confirmStage);
   }
   if (d.buy) buy(d.buy);
+  if (d.relic) {
+    const result = changeRelic(d.relic);
+    if (result === 'locked') return toast('Vença esse chefe para desbloquear a relíquia.');
+    if (result === 'full') return toast('Espaços ocupados. Retire uma relíquia antes de trocar.');
+    writeSave(); nestUI(); chime();
+    toast(result === 'added' ? RELIC_DEFS[d.relic].name + ' equipada para o próximo voo.' : 'Relíquia guardada.');
+    return;
+  }
   if (d.equip) {
     const result = changeCompanion(d.equip);
     if (result === 'locked') return toast('Resgate ou choque um ovo desta espécie primeiro.');
@@ -488,6 +507,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">17 NOV 2026 · V0.7.8</div><h2>Os Seis Guardiões</h2><p>Os seis chefes receberam golpes próprios: brasas, espinhos, cristais, gelo, lava e sombras. Cada um possui dois núcleos de armadura brilhantes que você pode destruir mirando nas laterais do dragão.</p><br><p>Quebrar os núcleos causa dano adicional, enfraquece alguns padrões e reduz reforços. Ao perder vida, os chefes transformam sua aparência e entram numa breve animação antes de retomar os ataques.</p><br><p class="muted">Vida, dano, recompensas, progresso e checkpoints continuam compatíveis. Testes de campanha e combate fazem parte desta entrega.</p>';
+  $("#dialogContent").innerHTML = '<div class="kicker">17 NOV 2026 · V0.7.9</div><h2>Relíquias dos Seis Guardiões</h2><p>Cada vitória contra um dos seis chefes libera uma relíquia exclusiva para equipar no Ninho. As relíquias oferecem melhorias especiais de ataque, recuperação, escudo, esquiva, magia e fúria.</p><br><p>O segundo espaço de relíquia fica disponível no Ninho nível 4. O Relicário reconhece vitórias registradas em salvamentos antigos e garante a recompensa somente uma vez.</p><br><p class="muted">As mudanças de equipamento valem para o próximo voo. Checkpoints atuais continuam com os atributos anteriores.</p></p>';
   $("#dialog").showModal();
 };
