@@ -507,6 +507,6 @@ soundUI();
 journal();
 $("#devlog").onclick = () => {
   if (mode === "flight") pauseFlight();
-  $("#dialogContent").innerHTML = '<div class="kicker">17 NOV 2026 · V0.7.9</div><h2>Relíquias dos Seis Guardiões</h2><p>Cada vitória contra um dos seis chefes libera uma relíquia exclusiva para equipar no Ninho. As relíquias oferecem melhorias especiais de ataque, recuperação, escudo, esquiva, magia e fúria.</p><br><p>O segundo espaço de relíquia fica disponível no Ninho nível 4. O Relicário reconhece vitórias registradas em salvamentos antigos e garante a recompensa somente uma vez.</p><br><p class="muted">As mudanças de equipamento valem para o próximo voo. Checkpoints atuais continuam com os atributos anteriores.</p></p>';
+  $("#dialogContent").innerHTML = '<div class="kicker">17 NOV 2026 · V0.7.9</div><h2>Relíquias dos Seis Guardiões</h2><p>Cada vitória contra um dos seis chefes libera uma relíquia exclusiva para equipar no Ninho. As relíquias oferecem melhorias especiais de ataque, recuperação, escudo, esquiva, magia e fúria.</p><br><p>O segundo espaço de relíquia fica disponível no Ninho nível 4. O Relicário reconhece vitórias registradas em salvamentos antigos e garante a recompensa somente uma vez.</p><br><p class="muted">As mudanças de equipamento valem para o próximo voo. Checkpoints atuais continuam com os atributos anteriores.</p>';
   $("#dialog").showModal();
 };
