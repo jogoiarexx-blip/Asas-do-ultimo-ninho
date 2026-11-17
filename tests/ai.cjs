@@ -1,7 +1,7 @@
 /* Regression tests for enemy tactical AI and serializable checkpoints. */
 const assert=require('node:assert/strict'), fs=require('node:fs'), path=require('node:path'), vm=require('node:vm');
 const dir=path.resolve(__dirname,'../dist');
-const code=['catalog','dragons','evolution','save','art','flight','training','app'].map(k=>fs.readFileSync(path.join(dir,k+'.js'),'utf8')).join('\n');
+const code=['catalog','dragons','relics','evolution','save','art','flight','training','app'].map(k=>fs.readFileSync(path.join(dir,k+'.js'),'utf8')).join('\n');
 const noop=()=>{}, elements=new Map(), storage=new Map();
 const getNode=k=>{if(!elements.has(k))elements.set(k,{style:{},dataset:{},classList:{add:noop,remove:noop,toggle:noop},setAttribute:noop,addEventListener:noop,getContext:()=>({}),showModal:noop,close:noop});return elements.get(k);};
 const scope={assert,console,performance,Math,document:{querySelector:getNode,getElementById:getNode,querySelectorAll:()=>[],addEventListener:noop},window:{addEventListener:noop},location:{protocol:'https:'},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},setTimeout:noop,clearTimeout:noop,requestAnimationFrame:noop,cancelAnimationFrame:noop};
@@ -47,5 +47,5 @@ const tests=`
  `;
 vm.runInNewContext(code+tests,scope);
 const fx=fs.readFileSync(path.join(dir,'fx.js'),'utf8');assert.match(fx,/enemy\.ai\?\.state!=='windup'/);
-const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');assert.equal((html.match(/\?v=0\.7\.8/g)||[]).length,11);
+const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');assert.equal((html.match(/\?v=0\.7\.9/g)||[]).length,12);
 console.log('OK · 4 arquétipos táticos, formações, esquiva, preparação, tiros travados, investida, Glacial e checkpoint legado.');
